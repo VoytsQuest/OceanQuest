@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06284a">
+<title>OceanQuest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv" width="1280" height="720" aria-label="Spielfeld"></canvas>
+  <div id="ui"></div>
+  <div id="touch" aria-hidden="true">
+    <div class="dpad">
+      <button data-k="up" class="tb up">▲</button>
+      <button data-k="left" class="tb left">◀</button>
+      <button data-k="right" class="tb right">▶</button>
+      <button data-k="down" class="tb down">▼</button>
+    </div>
+    <button data-k="action" class="tb action">Flossen-<br>schlag</button>
+  </div>
+  <div id="topbtns">
+    <button id="btn-music" title="Nächster Musik-Track (Taste M)"><span class="note">♫</span><span id="track-name">–</span><span class="skip">⏭</span><kbd>M</kbd></button>
+    <button id="btn-pause" title="Pause (Esc)">❚❚</button>
+  </div>
+  <div id="toast" role="status"></div>
+  <div id="splash">
+    <div class="sp-start" id="sp-start"><div class="sp-logo">OceanQuest</div><div class="sp-sub">Die 8 Prüfungen der Tiefsee</div><button class="sp-btn" id="sp-btn">▶ Tippe zum Starten</button><div class="sp-hint">mit Ton 🔊</div></div>
+    <video id="intro" src="assets/video/voytsquest-intro.mp4" playsinline preload="auto"></video>
+    <button id="sp-skip">Überspringen ⏭</button>
+  </div>
+</div>
+<div id="rotate"><div>🐬<br>Bitte drehe dein Gerät ins Querformat.</div></div>
+<div id="print-area"></div>
+<script src="js/mathgen.js"></script>
+<script src="js/worlds.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/art.js"></script>
+<script src="js/game.js"></script>
+<script src="js/finale.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
