@@ -161,7 +161,7 @@
       else if (tpl === 1) { const a = R(80, 300), b = R(10, a - 30), c = R(10, 120); p = `Im Riff leben ${a} Fische. ${b} schwimmen weg, dann kommen ${c} neue dazu. Wie viele Fische sind jetzt im Riff?`; ans = a - b + c; sol = `${a} ${M} ${b} + ${c} = ${ans}`; }
       else if (tpl === 2) { const a = R(9, 30), b = R(10, 40), c = pick([50, 100]); if (a + b > c) return word(level); p = `Anton kauft ein T-Shirt für ${a} € und eine Hose für ${b} €. Er bezahlt mit einem ${c}-€-Schein. Wie viel Euro bekommt er zurück?`; ans = c - (a + b); sol = `${c} ${M} (${a} + ${b}) = ${ans}`; }
       else if (tpl === 3) { const a = R(40, 200), b = R(10, 80); p = `Ein Delfin schwimmt am Montag ${a} m. Am Dienstag schwimmt er ${b} m mehr als am Montag. Wie viele Meter schwimmt er an beiden Tagen zusammen?`; ans = a + (a + b); sol = `${a} + (${a} + ${b}) = ${ans}`; }
-      else { const a = R(100, 500), b = R(20, 150), c = R(20, 150); p = `In einer Schatzkiste liegen ${a} Goldmünzen. Kapitän Timmy nimmt ${b} heraus und legt später ${c} wieder hinein. Wie viele Münzen sind jetzt in der Kiste?`; ans = a - b + c; sol = `${a} ${M} ${b} + ${c} = ${ans}`; }
+      else { const a = R(100, 500), b = R(20, Math.min(150, a - 20)), c = R(20, 150); p = `In einer Schatzkiste liegen ${a} Goldmünzen. Kapitän Timmy nimmt ${b} heraus und legt später ${c} wieder hinein. Wie viele Münzen sind jetzt in der Kiste?`; ans = a - b + c; sol = `${a} ${M} ${b} + ${c} = ${ans}`; }
     } else {
       if (tpl === 0) { const m = [R(80, 320), R(60, 160), R(60, 160)], e = [R(60, 140), R(20, 80), R(20, 80)]; p = `Ein Unterwassermarkt verkauft morgens ${m[0]} kg Algen, ${m[1]} kg Seegras und ${m[2]} kg Muscheln. Abends verkauft er noch ${e[0]} kg Algen, ${e[1]} kg Seegras und ${e[2]} kg Muscheln. Wie viele Kilogramm sind das insgesamt?`; ans = m[0] + m[1] + m[2] + e[0] + e[1] + e[2]; sol = `${m.join(' + ')} + ${e.join(' + ')} = ${ans}`; }
       else if (tpl === 1) { const a = R(400, 900), b = R(80, 200), c = R(80, 200), d = R(50, 150); if (b + c > a) return word(level); p = `Ein Forschungs-U-Boot hat ${a} Liter Sauerstoff. Am ersten Tag verbraucht es ${b} Liter, am zweiten Tag ${c} Liter. Dann wird es mit ${d} Litern aufgefüllt. Wie viele Liter hat es jetzt?`; ans = a - b - c + d; sol = `${a} ${M} ${b} ${M} ${c} + ${d} = ${ans}`; }
@@ -280,6 +280,19 @@
     }
     return out;
   }
+  // Quiz-Show: Frage 1–15, immer genau 4 Antwortmöglichkeiten, Schwierigkeit steigt
+  const QUIZ_LEVEL = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7];
+  function generateQuiz(step) {
+    const lvl = QUIZ_LEVEL[Math.max(0, Math.min(14, step))];
+    for (let tries = 0; tries < 80; tries++) {
+      const list = W[lvl]; let t = list[Math.floor(rnd() * list.length)]();
+      if (t.format === 'order' || t.format === 'pyramid') continue;
+      if (typeof t.answer === 'number' && t.format === 'input') { t.format = 'choice'; t.choices = numChoices(t.answer, [t.answer + 10, t.answer - 10, t.answer + 1]); }
+      if (!t.choices || t.choices.length !== 4) continue;
+      t.format = 'choice'; t.step = step; t.level = lvl; return t;
+    }
+    const t = add(lvl >= 2 ? 1000 : 100); t.format = 'choice'; t.choices = numChoices(t.answer, [t.answer + 10]); t.step = step; t.level = lvl; return t;
+  }
   function check(task, input) {
     if (input === null || input === undefined) return false;
     switch (task.format) {
@@ -291,7 +304,7 @@
     return false;
   }
 
-  const api = { generate, generateExam, check, fmt, LABELS, _gens: { add, sub, times, missing, cleverAdd, cleverSub, laws, assoc, bracketsEval, orderOps, bracketPlace, word, riddle, termChoice, pyramid, sequence, estimate, orderResults }, _evalSpan: evalSpan, _evalLR: evalLR, setRandom(f) { rnd = f; } };
+  const api = { generate, generateExam, generateQuiz, QUIZ_LEVEL, check, fmt, LABELS, _gens: { add, sub, times, missing, cleverAdd, cleverSub, laws, assoc, bracketsEval, orderOps, bracketPlace, word, riddle, termChoice, pyramid, sequence, estimate, orderResults }, _evalSpan: evalSpan, _evalLR: evalLR, setRandom(f) { rnd = f; } };
   root.MathGen = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

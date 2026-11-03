@@ -46,6 +46,15 @@ for (let w = 1; w <= 8; w++) {
     }
   }
 }
+for (let step = 0; step < 15; step++) for (let i = 0; i < 1500; i++) {
+  const t = MG.generateQuiz(step); n++;
+  assert(t.format === 'choice' && t.choices.length === 4, 'Quiz: genau 4 Antworten', t);
+  const vals = t.choices.map(c => c.value);
+  assert(new Set(vals).size === 4 && vals.filter(v => v === String(t.answer)).length === 1, 'Quiz: genau eine richtige', t);
+  assert(MG.check(t, String(t.answer)), 'Quiz: richtig erkannt', t);
+  if (t.expr) assert(evalExpr(t.expr) === t.answer, 'Quiz: Ausdruck stimmt', t);
+  if (t.format === 'brackets' || t.target !== undefined) assert(t.choices.map(c => evalExpr(toJs(c.label))).filter(r => r === t.target).length === 1, 'Quiz-Klammern eindeutig', t);
+}
 const ex = MG.generateExam(15);
 assert(ex.length === 15 && new Set(ex.map(t => t.prompt)).size === 15, 'Prüfung: 15 verschiedene Aufgaben', ex.length);
 assert(new Set(ex.map(t => t.topic)).size >= 8, 'Prüfung: Themenvielfalt', ex.map(t => t.topic));

@@ -128,8 +128,9 @@
   /* ================= SPIELABLAUF ================= */
   const Game = {
     VW, VH, hooks: {}, paused: false, get L() { return L; },
-    start(wid) {
+    start(wid, resume) {
       L = build(wid);
+      L.baseShells = L.shells.length; L.basePearls = L.pearls.length;
       const th = L.W.theme;
       if (!bgCache[wid]) bgCache[wid] = Art.buildBackground(th, LH);
       L.bg = bgCache[wid];
@@ -148,6 +149,7 @@
       L.state = 'title'; L.stateT = 0; L.t = 0; L.shake = 0; L.boss = null; L.bossStarted = false; L.magic = null;
       L.totalShells = L.shells.length;
       this.paused = false;
+      if (resume && resume.world === wid) applyResume(resume);
       Sound.forWorld(wid);
     },
     stop() { L = null; },
@@ -190,8 +192,26 @@
       const coins = L.shellsGot * 5 + L.pearlsGot * 25 + L.correct * 15 + 150 + (L.egg && L.egg.found ? 300 : 0);
       return { egg: L.egg && L.egg.found ? L.egg.text : null, world: L.wid, name: W.name, time, timeBonus, shells: L.shellsGot, totalShells: L.totalShells, pearls: L.pearlsGot, correct: L.correct, fails: L.fails, score: levelScore, stars, coins, deaths: L.deaths };
     },
-    render(ctx) { if (L) render(ctx); }
+    render(ctx) { if (L) render(ctx); },
+    // Spielstand mitten im Level: letzter Checkpoint + bereits gesammelte Dinge
+    snapshot() {
+      if (!L || L.finished || L.magic) return null;
+      const idx = (arr, n, f) => arr.slice(0, n).map((x, i) => f(x) ? i : -1).filter(i => i >= 0);
+      let cp = -1; L.checkpoints.forEach((c, i) => { if (c.active) cp = i; });
+      return { world: L.wid, cp, time: L.time, score: L.score, shellsGot: L.shellsGot, pearlsGot: L.pearlsGot, knocks: L.knocks,
+        shells: idx(L.shells, L.baseShells, s => s.got), pearls: idx(L.pearls, L.basePearls, p => p.got), chests: idx(L.chests, L.chests.length, c => c.open), switches: idx(L.switches, L.switches.length, s => s.on), egg: !!(L.egg && L.egg.found) };
+    }
   };
+  function applyResume(r) {
+    for (let i = 0; i <= r.cp && i < L.checkpoints.length; i++) L.checkpoints[i].active = true;
+    if (r.cp >= 0 && L.checkpoints[r.cp]) { const c = L.checkpoints[r.cp]; L.cp = { x: c.x, y: FLOOR - 200 }; L.d.x = L.cp.x; L.d.y = L.cp.y; L.d.comp.x = L.d.x - 80; L.cam.x = Math.max(0, L.d.x - VW * 0.4); }
+    L.time = r.time; L.score = r.score; L.shellsGot = r.shellsGot; L.pearlsGot = r.pearlsGot; L.knocks = r.knocks;
+    r.shells.forEach(i => { if (L.shells[i]) L.shells[i].got = true; }); r.pearls.forEach(i => { if (L.pearls[i]) L.pearls[i].got = true; });
+    r.chests.forEach(i => { if (L.chests[i]) L.chests[i].open = true; }); r.switches.forEach(i => { if (L.switches[i]) L.switches[i].on = true; });
+    L.gates.forEach(g => { if (L.switches.filter(s => s.gate === g && s.on).length >= g.need) { g.opening = true; g.open = 1; g.y = g.y0 - (g.h - 70); } });
+    if (L.egg) { L.egg.got = L.shells.filter(s => s.egg && s.got).length; L.egg.found = r.egg; }
+    L.d.invuln = 2; L.resumed = true;
+  }
 
   /* ================= PHYSIK & STEUERUNG ================= */
   function solidsNear(x0, x1) {
@@ -248,7 +268,7 @@
     }
     trail(dt);
     // Checkpoints
-    for (const cp of L.checkpoints) if (!cp.active && d.x > cp.x - 20) { cp.active = true; L.cp = { x: cp.x, y: FLOOR - 200 }; Sound.sfx('checkpoint'); popup(cp.x, FLOOR - 160, 'Checkpoint!', '#5affb0'); }
+    for (const cp of L.checkpoints) if (!cp.active && d.x > cp.x - 20) { cp.active = true; L.cp = { x: cp.x, y: FLOOR - 200 }; Sound.sfx('checkpoint'); popup(cp.x, FLOOR - 160, 'Checkpoint – gespeichert!', '#5affb0'); Game.hooks.autosave && Game.hooks.autosave(); }
     // Bossarena betreten
     if (!L.bossStarted && d.x > L.arena.x + 240) startBoss();
   }

@@ -9,7 +9,7 @@
     { file: 'assets/music/deep-reflections-2.mp3', title: 'Deep Reflections II' }
   ];
   // Jede Welt startet mit ihrer eigenen Stimmung (Taste M schaltet jederzeit weiter)
-  const WORLD_TRACK = { 0: 0, 1: 3, 2: 1, 3: 2, 4: 4, 5: 0, 6: 1, 7: 2, 8: 4, 9: 3 };
+  const WORLD_TRACK = { 0: 0, 1: 3, 2: 1, 3: 2, 4: 4, 5: 0, 6: 1, 7: 2, 8: 4, 9: 3, 10: 2 };
 
   const A = {
     TRACKS, ctx: null, el: null, idx: 0, unlocked: false, music: true, sfxOn: true, musicVol: 0.55, sfxVol: 0.8, onChange: null, _fade: null,
@@ -84,6 +84,7 @@
         case 'checkpoint': [659, 880, 1175].forEach((f, i) => T(f, 0.2, 'sine', 0.2, null, i * 0.08)); break;
         case 'click': T(700, 0.05, 'triangle', 0.12); break;
         case 'buy': [1047, 1319, 1568].forEach((f, i) => T(f, 0.15, 'triangle', 0.2, null, i * 0.05)); break;
+        case 'lock': T(196, 0.9, 'sine', 0.2); T(247, 0.9, 'sine', 0.12, null, 0.05); T(294, 0.9, 'sine', 0.1, null, 0.1); break;
         case 'lava': this.noise(0.6, 0.18, 300); break;
       }
     }

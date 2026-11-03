@@ -32,7 +32,8 @@
       score: 0, coins: 0, best: {}, playTime: 0,
       exam: { unlocked: false, passed: false, best: 0, date: null, score: '' },
       owned: [], equipped: { head: null, eyes: null, skin: null, fins: null, body: null, hair: null, trail: null, companion: null },
-      settings: { music: true, sfx: true, musicVol: 0.55, sfxVol: 0.8, touch: 'auto' }
+      settings: { music: true, sfx: true, musicVol: 0.55, sfxVol: 0.8, touch: 'auto' },
+      resume: null, contest: { played: 0, best: 0, won: 0 }, savedAt: null
     };
   }
   const num = (v, d, lo, hi) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -60,18 +61,45 @@
     if (raw.settings && typeof raw.settings === 'object') {
       const s = raw.settings; d.settings = { music: bool(s.music, true), sfx: bool(s.sfx, true), musicVol: num(s.musicVol, 0.55, 0, 1), sfxVol: num(s.sfxVol, 0.8, 0, 1), touch: ['auto', 'an', 'aus'].includes(s.touch) ? s.touch : 'auto' };
     }
+    if (raw.resume && typeof raw.resume === 'object' && raw.resume.world >= 1 && raw.resume.world <= d.unlocked) {
+      const r = raw.resume, ints = a => Array.isArray(a) ? a.filter(n => Number.isInteger(n) && n >= 0 && n < 500).slice(0, 500) : [];
+      d.resume = { world: Math.round(r.world), cp: Math.round(num(r.cp, -1, -1, 5)), time: num(r.time, 0, 0, 1e5), score: Math.round(num(r.score, 0, 0, 1e7)), shellsGot: Math.round(num(r.shellsGot, 0, 0, 999)), pearlsGot: Math.round(num(r.pearlsGot, 0, 0, 99)), knocks: Math.round(num(r.knocks, 0, 0, 999)), shells: ints(r.shells), pearls: ints(r.pearls), chests: ints(r.chests), switches: ints(r.switches), egg: bool(r.egg, false) };
+    }
+    if (raw.contest && typeof raw.contest === 'object') d.contest = { played: Math.round(num(raw.contest.played, 0, 0, 1e6)), best: Math.round(num(raw.contest.best, 0, 0, 15)), won: Math.round(num(raw.contest.won, 0, 0, 1e9)) };
+    d.savedAt = str(raw.savedAt, null, 30);
     return d;
   }
 
+  const CKEY = 'oceanquest.slots.v1';
   const Save = {
     ITEMS, SLOTS, data: defaults(),
+    active: 0, slots: [null, null, null], settings: defaults().settings,
     load() {
-      let raw = null;
-      try { const s = localStorage.getItem(KEY); if (s) raw = JSON.parse(s); } catch (e) { raw = null; }
-      this.data = sanitize(raw); return this.data;
+      let c = null;
+      try { const s = localStorage.getItem(CKEY); if (s) c = JSON.parse(s); } catch (e) { c = null; }
+      if (!c || !Array.isArray(c.slots)) { // Übernahme des alten Einzel-Spielstands in Spielstand 1
+        let old = null; try { const s = localStorage.getItem(KEY); if (s) old = JSON.parse(s); } catch (e) { old = null; }
+        c = { active: 0, slots: [old && old.created ? old : null, null, null], settings: old && old.settings };
+      }
+      this.slots = [0, 1, 2].map(i => { const r = c.slots[i]; if (!r || typeof r !== 'object' || !r.created) return null; return sanitize(r); });
+      this.settings = sanitize({ settings: c.settings }).settings;
+      this.active = [0, 1, 2].includes(c.active) ? c.active : 0;
+      this.data = this.slots[this.active] || defaults(); this.data.settings = this.settings;
+      return this.data;
     },
-    save() { try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch (e) { /* privat/voll – Spiel läuft weiter */ } },
-    resetProgress() { const s = this.data.settings; this.data = defaults(); this.data.settings = s; this.save(); },
+    save() {
+      this.data.settings = this.settings;
+      if (this.data.created) { this.data.savedAt = new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }); this.slots[this.active] = this.data; }
+      try { localStorage.setItem(CKEY, JSON.stringify({ active: this.active, slots: this.slots, settings: this.settings })); } catch (e) { /* privat/voll – Spiel läuft weiter */ }
+    },
+    useSlot(i) { this.active = i; this.data = this.slots[i] || defaults(); this.data.settings = this.settings; this.save(); return this.data; },
+    deleteSlot(i) { this.slots[i] = null; if (this.active === i) { this.data = defaults(); this.data.settings = this.settings; } this.save(); },
+    resetProgress() { this.data = defaults(); this.data.settings = this.settings; this.slots[this.active] = null; this.save(); },
+    exportCode() { const o = Object.assign({}, this.data, { sig: 'OQ1' }); delete o.settings; return btoa(unescape(encodeURIComponent(JSON.stringify(o)))); },
+    importCode(code) {
+      try { const raw = JSON.parse(decodeURIComponent(escape(atob(String(code).replace(/\s+/g, ''))))); if (!raw || raw.sig !== 'OQ1') return false;
+        raw.created = true; const d = sanitize(raw); d.settings = this.settings; this.data = d; this.slots[this.active] = d; this.save(); return true; } catch (e) { return false; }
+    },
     pearls() { return this.data.defeated.filter(Boolean).length; },
     cosmetics() { return Object.assign({}, this.data.equipped); },
     _sanitize: sanitize

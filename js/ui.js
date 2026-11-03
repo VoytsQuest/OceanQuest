@@ -19,9 +19,10 @@
       Sound.onChange = (t, i, silent) => { $('#track-name').textContent = t.title; if (!silent) toast('♫ ' + t.title); };
       $('#track-name').textContent = Sound.current().title;
       Input.bindTouch($('#touch'));
-      Game.hooks = { dialog: showDialog, bossMath, results: showResults, toast };
+      Game.hooks = { dialog: showDialog, bossMath, results: showResults, toast, autosave };
       document.addEventListener('keydown', onKey);
-      document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'game' && !Game.paused && Game.L && Game.L.state === 'play') UI.togglePause(); });
+      window.addEventListener('pagehide', () => { if (mode === 'game') autosave(); });
+      document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'game') autosave(); if (document.hidden && mode === 'game' && !Game.paused && Game.L && Game.L.state === 'play') UI.togglePause(); });
       show('main');
     },
     togglePause() {
@@ -35,17 +36,19 @@
       if (['dialog', 'math', 'victory'].includes(L.state)) return;
       Game.paused = true; overlay(`<div class="panel pause"><h2>Pause</h2>
         <button class="btn big" data-act="resume">▶ Weiter</button>
+        <button class="btn gold" data-act="savegame">💾 Speichern</button>
         <button class="btn" data-act="cprestart">↺ Zum Checkpoint</button>
         <button class="btn" data-act="restartlvl">⟲ Level neu starten</button>
         <button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button>
         <button class="btn" data-act="quit">⌂ Zur Weltkarte</button></div>`); updateChrome();
     },
-    back() { if (screen !== 'main' && !['finale', 'cert'].includes(screen)) show('main'); },
+    back() { if (screen !== 'main' && !['finale', 'cert', 'contest'].includes(screen)) show('main'); },
     renderMenu(ctx, dt) { renderMenuScene(ctx, dt); },
     toast
   };
 
   /* ---------- Hilfsfunktionen ---------- */
+  function autosave() { const s = Game.snapshot(); if (s && S().created) { S().resume = s; Save.save(); return true; } return false; }
   function toast(text) { const t = $('#toast'); t.textContent = text; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
   function overlay(html) { let o = $('#overlay'); if (!o) { o = document.createElement('div'); o.id = 'overlay'; ui.appendChild(o); } o.innerHTML = html; o.style.display = 'flex'; return o; }
   function closeOverlay() { const o = $('#overlay'); if (o) { o.style.display = 'none'; o.innerHTML = ''; } }
@@ -80,9 +83,27 @@
   /* ---------- Aktionen ---------- */
   function act(a, arg, el) {
     switch (a) {
-      case 'new': if (S().created && S().defeated.some(Boolean)) { overlay(`<div class="panel"><h2>Neues Spiel?</h2><p>Dein bisheriger Fortschritt (${Save.pearls()} Perlen) wird gelöscht. Muschel-Coins und Shop-Items bleiben erhalten.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="newyes">Ja, neu beginnen</button></div></div>`); } else show('create', { fresh: true }); break;
+      case 'new': if (!Save.slots.some(Boolean)) { Save.useSlot(0); show('create', { fresh: true }); break; } show('slots'); break;
+      case 'newold': if (S().created && S().defeated.some(Boolean)) { overlay(`<div class="panel"><h2>Neues Spiel?</h2><p>Dein bisheriger Fortschritt (${Save.pearls()} Perlen) wird gelöscht. Muschel-Coins und Shop-Items bleiben erhalten.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="newyes">Ja, neu beginnen</button></div></div>`); } else show('create', { fresh: true }); break;
       case 'newyes': { const keep = { coins: S().coins, owned: S().owned, equipped: S().equipped }; Save.resetProgress(); Object.assign(S(), keep); Save.save(); closeOverlay(); show('create', { fresh: true }); break; }
-      case 'continue': if (!S().created) show('create', { fresh: true }); else show('worlds'); break;
+      case 'continue': if (!S().created) show('slots'); else if (S().resume) startWorld(S().resume.world, S().resume); else show('worlds'); break;
+      case 'savegame': if (autosave()) toast('💾 Gespeichert! Du machst später am letzten Checkpoint weiter.'); else toast('Gerade nicht möglich – der Boss ist schon besiegt.'); break;
+      case 'slotplay': Save.useSlot(+arg); Sound.sfx('switch'); toast('Spielstand ' + (+arg + 1) + ': ' + S().name); show('main'); break;
+      case 'slotnew': Save.useSlot(+arg); show('create', { fresh: true }); break;
+      case 'slotdel': overlay(`<div class="panel"><h2>Spielstand löschen?</h2><p>Spielstand ${+arg + 1} (${esc(Save.slots[+arg] ? Save.slots[+arg].name : '')}) mit allen Perlen, Coins und Items wird gelöscht.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="slotdelyes" data-arg="${arg}">Ja, löschen</button></div></div>`); break;
+      case 'slotdelyes': Save.deleteSlot(+arg); closeOverlay(); toast('Spielstand gelöscht.'); show('slots'); break;
+      case 'codeshow': {
+        if (!S().created) { toast('Wähle zuerst einen Spielstand.'); break; }
+        const code = Save.exportCode();
+        overlay(`<div class="panel codepanel"><h2>Spielstand-Code</h2><p>Kopiere diesen Code und gib ihn auf dem anderen Gerät unter <b>Spielstände → Code eingeben</b> ein.</p><textarea id="codeout" readonly>${code}</textarea><div class="row"><button class="btn gold" id="copybtn">📋 Kopieren</button><button class="btn" data-act="closeov">Schließen</button></div></div>`);
+        const ta = $('#codeout'); $('#copybtn').onclick = () => { const done = () => toast('Code kopiert!'); const sel = () => { ta.focus(); ta.select(); toast('Code markiert – jetzt kopieren (Strg+C).'); }; try { navigator.clipboard.writeText(code).then(done, sel); } catch (e) { sel(); } };
+        break;
+      }
+      case 'codein': overlay(`<div class="panel codepanel"><h2>Code eingeben</h2><p>Der Code wird in <b>Spielstand ${Save.active + 1}</b> geladen${Save.slots[Save.active] ? ' und ersetzt den Delfin <b>' + esc(Save.slots[Save.active].name) + '</b>' : ''}.</p><textarea id="codein" placeholder="Code hier einfügen"></textarea><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn gold" data-act="codeload">Laden</button></div></div>`); setTimeout(() => $('#codein') && $('#codein').focus(), 50); break;
+      case 'codeload': if (Save.importCode($('#codein').value)) { closeOverlay(); Sound.sfx('unlock'); toast('Spielstand geladen: ' + S().name); show('main'); } else toast('Dieser Code ist ungültig. Bitte vollständig einfügen.'); break;
+      case 'contest': if (!Save.slots.some(Boolean)) { toast('Erstelle zuerst einen Delfin!'); show('slots'); } else show('contestpick'); break;
+      case 'contestgo': Save.useSlot(+arg); startContest(); break;
+      case 'contestquit': closeOverlay(); C = null; Sound.forWorld(0); show('main'); break;
       case 'goto': if (arg === 'main') SCREENS._from = 0; show(arg); break;
       case 'shopafter': SCREENS._from = +arg; Game.stop(); show('shop', { from: +arg }); break;
       case 'closeov': closeOverlay(); break;
@@ -92,18 +113,18 @@
         S().name = n; S().childName = ($('#cname').value || '').trim().slice(0, 30); const first = !S().created; S().created = true; Save.save();
         if (first || el.dataset.fresh) startWorld(1); else show('main'); break;
       }
-      case 'play': startWorld(+arg); break;
+      case 'play': { const r = S().resume; startWorld(+arg, r && r.world === +arg ? r : null); break; }
       case 'locked': toast('Besiege zuerst den Boss der vorherigen Welt!'); break;
       case 'resume': UI.togglePause(); break;
       case 'cprestart': Game.paused = false; closeOverlay(); Game.respawnAtCheckpoint(); break;
-      case 'restartlvl': Game.paused = false; closeOverlay(); startWorld(Game.L.wid); break;
-      case 'quit': Game.paused = false; Finale.paused = false; Finale.stop(); closeOverlay(); Game.stop(); mode = 'menu'; Sound.forWorld(0); show('worlds'); break;
+      case 'restartlvl': { Game.paused = false; closeOverlay(); const w = Game.L.wid; if (S().resume && S().resume.world === w) { S().resume = null; Save.save(); } startWorld(w); break; }
+      case 'quit': if (mode === 'game') autosave(); Game.paused = false; Finale.paused = false; Finale.stop(); closeOverlay(); Game.stop(); mode = 'menu'; Sound.forWorld(0); show('worlds'); break;
       case 'music': S().settings.music = !S().settings.music; Sound.setMusic(S().settings.music); Save.save(); if (el) el.textContent = S().settings.music ? '♫ Musik aus' : '♫ Musik an'; if (screen === 'settings' && mode === 'menu') show('settings'); break;
       case 'sfx': S().settings.sfx = !S().settings.sfx; Sound.setSfx(S().settings.sfx); Save.save(); show('settings'); break;
       case 'touch': S().settings.touch = arg; Save.save(); show('settings'); break;
       case 'nexttrack': Sound.next(); break;
-      case 'reset': overlay(`<div class="panel"><h2>Alles zurücksetzen?</h2><p>Alle Welten, Perlen, Bestzeiten, Coins und Items werden gelöscht.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="resetyes">Ja, alles löschen</button></div></div>`); break;
-      case 'resetyes': Save.resetProgress(); closeOverlay(); toast('Spielstand gelöscht.'); show('main'); break;
+      case 'reset': overlay(`<div class="panel"><h2>Spielstand löschen?</h2><p>Alle Welten, Perlen, Bestzeiten, Coins und Items dieses Delfins werden gelöscht. Die anderen Spielstände bleiben erhalten.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="resetyes">Ja, alles löschen</button></div></div>`); break;
+      case 'resetyes': Save.resetProgress(); closeOverlay(); toast('Spielstand gelöscht.'); show('slots'); break;
       case 'shopcat': show('shop', { cat: arg }); break;
       case 'buy': buy(arg); break;
       case 'nextworld': startWorld(Math.min(8, +arg + 1)); break;
@@ -115,10 +136,11 @@
     }
   }
 
-  function startWorld(w) {
+  function startWorld(w, resume) {
     if (w > S().unlocked) { toast('Diese Welt ist noch gesperrt.'); return; }
     mode = 'game'; screen = 'game'; ui.innerHTML = ''; ui.className = 'ingame';
-    Game.start(w); updateChrome();
+    Game.start(w, resume); updateChrome();
+    if (resume) setTimeout(() => toast('💾 Weiter am Checkpoint in Welt ' + w), 400);
   }
 
   /* ---------- Bildschirme ---------- */
@@ -135,7 +157,9 @@
       ui.innerHTML = `<div class="title-wrap"><div class="logo">OceanQuest</div><div class="plank subtitle">Die 8 Prüfungen der Tiefsee</div></div>
       <nav class="mainmenu">
         <button class="btn big" data-act="new" ${has ? '' : 'data-default'}>▶ Neues Spiel</button>
-        <button class="btn" data-act="continue" ${has ? 'data-default' : 'disabled'}>⟳ Spiel fortsetzen</button>
+        <button class="btn" data-act="continue" ${has ? 'data-default' : 'disabled'}>⟳ Fortsetzen${has && S().resume ? ' · Welt ' + S().resume.world : ''}</button>
+        <button class="btn" data-act="goto" data-arg="slots">💾 Spielstände</button>
+        <button class="btn contestbtn" data-act="contest">🎤 Mathe-Contest</button>
         <button class="btn" data-act="goto" data-arg="create">🐬 Mein Delfin</button>
         <button class="btn" data-act="goto" data-arg="shop">🐚 Delfin-Shop</button>
         <button class="btn" data-act="${has ? 'goto' : 'continue'}" data-arg="worlds">🗺 Welten</button>
@@ -144,7 +168,7 @@
         <button class="btn" data-act="goto" data-arg="help">📖 Anleitung</button>
       </nav>
       <div class="pearlbar">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<span class="pearl ${S().defeated[i] ? 'got' : ''}" title="Perle ${i + 1}"></span>`).join('')}</div>
-      ${has ? `<div class="hello">Hallo, <b>${esc(S().name)}</b>! ${coinsChip()}</div>` : ''}
+      ${has ? `<div class="hello">Spielstand ${Save.active + 1}: <b>${esc(S().name)}</b> ${coinsChip()}</div>` : ''}
       <footer>ein Lernspiel von <b>VoytsQuest</b></footer>`;
     },
     create(o) {
@@ -160,14 +184,14 @@
       $('#dprev').appendChild(dolphinCanvas(460, 260, 2.3));
       ui.querySelectorAll('.arrows .btn').forEach(b => b.addEventListener('click', () => setTimeout(() => show('create', o), 0)));
       $('#dname').addEventListener('keydown', e => { if (e.key === 'Enter') ui.querySelector('[data-act=createdone]').click(); });
-      if (!S().created) setTimeout(() => $('#dname').focus(), 50);
+      if (!S().created) setTimeout(() => { const n = $('#dname'); if (n) n.focus(); }, 50);
     },
     worlds() {
       const d = S();
       ui.innerHTML = header('Die 8 Meereswelten', `${esc(d.name)} · ${Save.pearls()} von 8 magischen Perlen`) + `<div class="worldgrid">${WORLDS.map(w => {
         const open = w.id <= d.unlocked, done = d.defeated[w.id - 1], b = d.best[w.id];
         return `<button class="wcard ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-act="${open ? 'play' : 'locked'}" data-arg="${w.id}">
-          <div class="wc-boss" data-boss="${w.boss}" data-grey="${open ? 0 : 1}"></div>
+          ${d.resume && d.resume.world === w.id ? '<span class="wc-save">💾 Checkpoint</span>' : ''}<div class="wc-boss" data-boss="${w.boss}" data-grey="${open ? 0 : 1}"></div>
           <div class="wc-name">${w.id}. ${w.bossName}<small>${w.short}</small></div>
           <div class="wc-info">${open ? (b ? `${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)} · ${fmtTime(b.time)}` : 'Neu!') : '🔒 gesperrt'}</div>
           ${done ? '<span class="wc-pearl" title="Perle erhalten"></span>' : ''}</button>`;
@@ -205,7 +229,7 @@
         <div class="setrow"><span>Aktueller Track</span><b id="trk">${esc(Sound.current().title)}</b><button class="btn small" data-act="nexttrack">⏭ Nächster (M)</button></div>
         <div class="setrow"><span>Soundeffekte</span><button class="btn small" data-act="sfx">${st.sfx ? 'An ✔' : 'Aus'}</button><input type="range" min="0" max="1" step="0.05" value="${st.sfxVol}" id="svol" aria-label="Effektlautstärke"></div>
         <div class="setrow"><span>Touch-Steuerung</span>${['auto', 'an', 'aus'].map(k => `<button class="btn small ${st.touch === k ? 'sel' : ''}" data-act="touch" data-arg="${k}">${k === 'auto' ? 'Automatisch' : k === 'an' ? 'Immer an' : 'Aus'}</button>`).join('')}</div>
-        <div class="setrow"><span>Spielstand</span><button class="btn small warn" data-act="reset">Alles zurücksetzen</button></div>
+        <div class="setrow"><span>Spielstand</span><button class="btn small" data-act="goto" data-arg="slots">💾 Spielstände</button><button class="btn small warn" data-act="reset">Diesen Spielstand löschen</button></div>
         <p class="note">Der Spielstand wird nur auf diesem Gerät gespeichert. Es werden keine Daten übertragen.</p></div>`;
       $('#mvol').addEventListener('input', e => { st.musicVol = +e.target.value; Sound.setMusicVol(st.musicVol); Save.save(); });
       $('#svol').addEventListener('input', e => { st.sfxVol = +e.target.value; Sound.setSfxVol(st.sfxVol); Save.save(); });
@@ -229,6 +253,23 @@
           <div class="goal"><b>Dein Ziel:</b> Besiege alle 8 Meeresbosse, bestehe die große Prüfung und erhalte die Urkunde „Meister der 8 Meere“!</div></div></div></div>`;
     },
     cert() { renderCertScreen(); },
+    slots() {
+      ui.innerHTML = header('Spielstände', 'Jeder Spielstand hat seinen eigenen Delfin, Fortschritt und eigene Coins') + `<div class="slotgrid">${[0, 1, 2].map(i => { const d = Save.slots[i];
+        return d ? `<div class="slot ${i === Save.active ? 'act' : ''}"><div class="slot-no">Spielstand ${i + 1}${i === Save.active ? ' · aktiv' : ''}</div><div class="slot-cv" data-i="${i}"></div><div class="slot-name">${esc(d.name)}</div>
+          <div class="slot-info"><span class="pearlmini">${d.defeated.filter(Boolean).length}/8 Perlen</span> · <span class="shell-ico"></span>${fmt(d.coins)}</div>
+          <div class="slot-sub">${d.resume ? '💾 Checkpoint in Welt ' + d.resume.world : d.exam.passed ? '🏆 Meister der 8 Meere' : 'Welt ' + d.unlocked + ' freigeschaltet'}<br><small>gespeichert: ${esc(d.savedAt || '–')}</small></div>
+          <div class="row"><button class="btn gold" data-act="slotplay" data-arg="${i}" ${i === Save.active ? 'data-default' : ''}>▶ Spielen</button><button class="btn small warn" data-act="slotdel" data-arg="${i}" aria-label="Spielstand ${i + 1} löschen">🗑</button></div></div>`
+          : `<div class="slot empty"><div class="slot-no">Spielstand ${i + 1}</div><div class="slot-plus">+</div><div class="slot-sub">Noch frei</div><button class="btn gold" data-act="slotnew" data-arg="${i}">➕ Neuer Delfin</button></div>`; }).join('')}</div>
+        <div class="codebar"><span>📲 Auf ein anderes Gerät wechseln:</span><button class="btn small" data-act="codeshow">Code für Spielstand ${Save.active + 1} anzeigen</button><button class="btn small" data-act="codein">Code eingeben</button></div>`;
+      ui.querySelectorAll('.slot-cv').forEach(el => { const d = Save.slots[+el.dataset.i]; el.appendChild(miniCanvas(300, 130, (ctx, t) => { const c = Object.assign({}, d.equipped); if (c.companion) Art.drawCompanion(ctx, c.companion, 58, 92, t, 1); Art.drawDolphin(ctx, { x: 160, y: 62 + Math.sin(t * 2 + +el.dataset.i) * 4, facing: 1, color: d.color, t, cos: c, scale: 1.2, speed: 0.35 }); }, true)); });
+    },
+    contestpick() {
+      ui.innerHTML = header('Mathe-Contest', 'Wähle deinen Delfin – die gewonnenen Muschel-Coins landen auf seinem Konto') + `<div class="slotgrid">${[0, 1, 2].map(i => { const d = Save.slots[i];
+        return d ? `<button class="slot pick" data-act="contestgo" data-arg="${i}"><div class="slot-no">Spielstand ${i + 1}</div><div class="slot-cv" data-i="${i}"></div><div class="slot-name">${esc(d.name)}</div><div class="slot-info"><span class="shell-ico"></span>${fmt(d.coins)} Coins</div><div class="slot-sub">${d.contest.played ? 'Bester Lauf: Frage ' + d.contest.best + ' von 15' : 'Noch nie in der Show'}</div><span class="btn gold">🎤 Mit ${esc(d.name)} spielen</span></button>`
+          : `<div class="slot empty"><div class="slot-no">Spielstand ${i + 1}</div><div class="slot-plus">+</div><button class="btn small" data-act="slotnew" data-arg="${i}">➕ Delfin erstellen</button></div>`; }).join('')}</div>
+        <div class="rulesbar"><b>So geht's:</b> 15 Fragen von leicht bis schwer · jede richtige Antwort klettert die Gewinnleiter hoch · Sicherheitsstufen bei Frage 5 und 10 · 3 Joker · jederzeit aussteigen und Coins mitnehmen · bis zu <b>5.000 Coins</b></div>`;
+      ui.querySelectorAll('.slot-cv').forEach(el => { const d = Save.slots[+el.dataset.i]; el.appendChild(miniCanvas(300, 130, (ctx, t) => Art.drawDolphin(ctx, { x: 150, y: 62 + Math.sin(t * 2 + +el.dataset.i) * 4, facing: 1, color: d.color, t, cos: Object.assign({}, d.equipped), scale: 1.2, speed: 0.35 }), true)); });
+    },
     exam() { }
   };
 
@@ -339,6 +380,7 @@
     let unlockedMsg = '';
     if (w < 8 && d.unlocked < w + 1) { d.unlocked = w + 1; unlockedMsg = `🔓 Welt ${w + 1} freigeschaltet: ${WORLDS[w].name}!`; }
     if (w === 8 && !d.exam.unlocked) { d.exam.unlocked = true; unlockedMsg = '⚽ Das große Finale gegen Mbappé ist freigeschaltet!'; }
+    if (d.resume && d.resume.world === w) d.resume = null;
     d.coins += st.coins; d.playTime += st.time; d.score = WORLDS.reduce((a, x) => a + (d.best[x.id] ? d.best[x.id].score : 0), 0); Save.save();
     if (unlockedMsg) setTimeout(() => Sound.sfx('unlock'), 600);
     const o = overlay(`<div class="panel results"><h2>${WORLDS[w - 1].bossName} besiegt!</h2>
@@ -441,7 +483,132 @@
     const blob = new Blob(parts, { type: 'application/pdf' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'OceanQuest-Urkunde.pdf'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     toast('PDF wird heruntergeladen …');
   }
-  UI._drawCertificate = drawCertificate;
+  UI._drawCertificate = drawCertificate; UI._contest = () => C;
+
+  /* ---------- Mathe-Contest: Die große Muschel-Show ---------- */
+  const LADDER = [20, 40, 70, 100, 150, 200, 300, 400, 600, 800, 1000, 1500, 2000, 3000, 5000];
+  const SAFE = [4, 9];
+  const HOST = {
+    hello: n => `Willkommen in der großen Muschel-Show! Ich bin Otto, euer Showmaster mit acht Armen. Heute bei mir: ${n}!`,
+    ask: ['Hier kommt deine erste Frage – ganz entspannt!', 'Frage 2. Das schaffst du mit links … oder mit der Flosse!', 'Weiter geht’s mit Frage 3!', 'Frage 4 – gleich kommt die erste Sicherheitsstufe!', 'Frage 5! Wer die schafft, hat 150 Coins sicher!',
+      'Willkommen in der zweiten Runde! Frage 6.', 'Frage 7 – jetzt wird’s kniffliger.', 'Frage 8. Meine Arme zittern schon!', 'Frage 9. Gleich kommt Sicherheitsstufe Nummer zwei!', 'Frage 10! 800 Coins sicher – wenn du richtig liegst!',
+      'Jetzt beginnt die Profi-Runde! Frage 11.', 'Frage 12. Das Publikum hält die Luft an … und das unter Wasser!', 'Frage 13. Nur noch drei!', 'Frage 14. Die vorletzte!', 'Die letzte Frage! Für 5.000 Muschel-Coins!'],
+    lock: ['Ist das dein letztes Wort? … Eingeloggt!', 'Mutig! Mal sehen …', 'Hmm … spannend!', 'Eingeloggt. Trommelwirbel, bitte!'],
+    right: ['RICHTIG!', 'Absolut richtig!', 'Stark gerechnet!', 'Richtig – das Publikum tobt!'],
+    wrong: 'Oh nein … das war leider falsch.'
+  };
+  let C = null;
+  function startContest() {
+    closeOverlay(); mode = 'menu'; screen = 'contest'; ui.className = 'menu scr-contest'; Sound.forWorld(10);
+    C = { step: 0, jokers: { fifty: true, pub: true, call: true }, locked: false, task: null, hide: [], mood: 0, talkT: 3, hostText: HOST.hello(S().name) };
+    ui.innerHTML = `<div class="showroom"><div class="show-left"><div class="stagebox" id="stagebox"></div><div class="hostline" id="hostline"></div>
+      <div class="qbox"><div class="qmeta" id="qmeta"></div><div class="qtext" id="qtext"></div></div><div class="answers" id="answers"></div></div>
+      <div class="show-right"><div class="jokers"><button class="joker" data-j="fifty" title="Zwei falsche Antworten verschwinden">50:50</button><button class="joker" data-j="pub" title="Das Publikum stimmt ab">👥<small>Publikum</small></button><button class="joker" data-j="call" title="Frag Professor Willy">📞<small>Willy</small></button></div>
+      <ol class="ladder" id="ladder"></ol><button class="btn warn small walk" id="walk"></button><button class="btn small" data-act="contestquit">✕ Show verlassen</button></div></div>`;
+    $('#stagebox').appendChild(miniCanvas(870, 230, drawShow, true));
+    ui.querySelectorAll('.joker').forEach(b => b.onclick = () => useJoker(b.dataset.j, b));
+    $('#walk').onclick = () => { if (C.locked) return; const prize = C.step ? LADDER[C.step - 1] : 0; overlay(`<div class="panel"><h2>Aussteigen?</h2><p>Du nimmst <b>${fmt(prize)} Muschel-Coins</b> mit nach Hause.</p><div class="row"><button class="btn" data-act="closeov">Weiterspielen</button><button class="btn gold" id="walkyes">Ja, aussteigen</button></div></div>`); $('#walkyes').onclick = () => { closeOverlay(); endContest(prize, 'walk'); }; };
+    document.addEventListener('keydown', contestKeys);
+    setTimeout(nextQuestion, 1800); renderLadder(); setHost(C.hostText);
+  }
+  function contestKeys(e) {
+    if (screen !== 'contest') { document.removeEventListener('keydown', contestKeys); return; }
+    if ($('#overlay') && $('#overlay').style.display === 'flex') return;
+    const k = { KeyA: 0, KeyB: 1, KeyC: 2, KeyD: 3, Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[e.code];
+    if (k !== undefined) { const b = ui.querySelectorAll('.ans')[k]; if (b && !b.disabled) b.click(); }
+  }
+  function setHost(text, talk) { C.hostText = text; C.talkT = talk || 2.2; const h = $('#hostline'); if (h) h.innerHTML = '<b>Otto:</b> ' + esc(text); }
+  function renderLadder() {
+    const ol = $('#ladder'); if (!ol) return;
+    ol.innerHTML = LADDER.map((v, i) => ({ v, i })).reverse().map(({ v, i }) => `<li class="${SAFE.includes(i) ? 'safe' : ''} ${i === C.step ? 'cur' : ''} ${i < C.step ? 'done' : ''}"><span>${i + 1}</span><b>${fmt(v)}</b></li>`).join('');
+    const prize = C.step ? LADDER[C.step - 1] : 0; $('#walk').textContent = `Aussteigen · ${fmt(prize)} Coins`;
+  }
+  function nextQuestion() {
+    if (screen !== 'contest') return;
+    C.task = MathGen.generateQuiz(C.step); C.locked = false; C.hide = [];
+    setHost(HOST.ask[C.step]); renderLadder();
+    $('#qmeta').innerHTML = `Frage ${C.step + 1} von 15 · <span class="tag">${esc(C.task.label)}</span> · für <b>${fmt(LADDER[C.step])} Coins</b>${SAFE.includes(C.step) ? ' · <span class="safetag">Sicherheitsstufe</span>' : ''}`;
+    $('#qtext').innerHTML = esc(C.task.prompt).replace(/\n/g, '<br>').replace(/___/g, '<span class="gap">?</span>');
+    $('#answers').innerHTML = C.task.choices.map((c, i) => `<button class="ans" data-v="${esc(c.value)}"><span class="letter">${'ABCD'[i]}</span><span class="atext">${esc(c.label)}</span></button>`).join('');
+    ui.querySelectorAll('.ans').forEach(b => b.onclick = () => answer(b));
+    ui.querySelectorAll('.joker').forEach(b => b.disabled = !C.jokers[b.dataset.j]);
+  }
+  function answer(btn) {
+    if (C.locked) return; C.locked = true; btn.classList.add('sel'); Sound.sfx('lock');
+    ui.querySelectorAll('.joker').forEach(b => b.disabled = true);
+    setHost(HOST.lock[Math.floor(Math.random() * HOST.lock.length)]);
+    setTimeout(() => {
+      if (screen !== 'contest') return;
+      const ok = MathGen.check(C.task, btn.dataset.v);
+      const right = [...ui.querySelectorAll('.ans')].find(b => MathGen.check(C.task, b.dataset.v));
+      right.classList.add('ok');
+      if (ok) {
+        Sound.sfx('correct'); C.mood = 2; C.step++; renderLadder();
+        if (C.step >= 15) { setHost('UNGLAUBLICH! Alle 15 Fragen richtig!', 4); Sound.sfx('certificate'); setTimeout(() => endContest(LADDER[14], 'win'), 1800); return; }
+        setHost(HOST.right[Math.floor(Math.random() * HOST.right.length)] + (SAFE.includes(C.step - 1) ? ` ${fmt(LADDER[C.step - 1])} Coins sind dir sicher!` : ''));
+        setTimeout(nextQuestion, 1900);
+      } else {
+        btn.classList.remove('sel'); btn.classList.add('bad'); Sound.sfx('wrong'); C.mood = -2;
+        let safe = 0; SAFE.forEach(i => { if (C.step > i) safe = LADDER[i]; });
+        setHost(HOST.wrong + ` Richtig war ${right.querySelector('.letter').textContent}.`, 3);
+        setTimeout(() => endContest(safe, 'wrong'), 2600);
+      }
+    }, 1500);
+  }
+  function useJoker(j, btn) {
+    if (!C.jokers[j] || C.locked || !C.task) return; C.jokers[j] = false; btn.disabled = true; btn.classList.add('used'); Sound.sfx('switch');
+    const buttons = [...ui.querySelectorAll('.ans')]; const correctIdx = buttons.findIndex(b => MathGen.check(C.task, b.dataset.v));
+    if (j === 'fifty') {
+      const wrong = buttons.map((b, i) => i).filter(i => i !== correctIdx).sort(() => Math.random() - 0.5).slice(0, 2);
+      wrong.forEach(i => { buttons[i].classList.add('gone'); buttons[i].disabled = true; }); C.hide = wrong;
+      setHost('50:50! Zwei falsche Antworten sind verschwunden.');
+    } else if (j === 'pub') {
+      const open = buttons.map((b, i) => i).filter(i => !C.hide.includes(i));
+      const sure = Math.max(0.3, 0.78 - C.step * 0.035); let fav = correctIdx;
+      if (C.step >= 11 && Math.random() < 0.2) fav = open.filter(i => i !== correctIdx)[0];
+      const raw = open.map(i => ({ i, v: i === fav ? sure * 100 : Math.random() * (100 - sure * 100) / open.length + 4 }));
+      const sum = raw.reduce((a, r) => a + r.v, 0); const pct = raw.map(r => ({ i: r.i, p: Math.round(r.v / sum * 100) }));
+      overlay(`<div class="panel pubpanel"><h2>👥 Das Publikum hat abgestimmt</h2><div class="bars">${[0, 1, 2, 3].map(i => { const r = pct.find(x => x.i === i); const p = r ? r.p : 0; return `<div class="bar"><div class="bfill" style="height:${p * 2}px"></div><b>${p}%</b><span>${'ABCD'[i]}</span></div>`; }).join('')}</div><p class="note">Krabben, Fische und Quallen haben abgestimmt – sie können sich aber auch irren!</p><div class="row"><button class="btn gold" data-act="closeov" data-default>Danke!</button></div></div>`);
+      setHost('Das Publikum hat gesprochen!');
+    } else {
+      const sure = C.step < 6 ? 0.95 : C.step < 11 ? 0.8 : 0.65; const guess = Math.random() < sure ? correctIdx : buttons.map((b, i) => i).filter(i => i !== correctIdx && !C.hide.includes(i))[0];
+      const L2 = 'ABCD'[guess]; const conf = sure > 0.9 ? `Ganz klar: <b>${L2}</b>! Da bin ich mir so sicher wie meine Brille auf meiner Nase sitzt.` : sure > 0.7 ? `Ich glaube, es ist <b>${L2}</b>. Ziemlich sicher … glaube ich.` : `Puh, schwierig! Vielleicht <b>${L2}</b>? Aber meine Brille ist beschlagen …`;
+      overlay(`<div class="panel callpanel"><h2>📞 Anruf bei Professor Willy</h2><div class="callrow"><div id="willycv"></div><div><p>„Hallo ${esc(S().name)}! Lass mich nachdenken …“</p><p>„${conf}“</p><p class="note">${esc(C.task.hint)}</p></div></div><div class="row"><button class="btn gold" data-act="closeov" data-default>Danke, Willy!</button></div></div>`);
+      $('#willycv').appendChild(bossCanvas('willy', 170, 150, 0.45)); setHost('Willy ist am Telefon!');
+    }
+  }
+  function endContest(prize, how) {
+    if (screen !== 'contest') return; const d = S();
+    d.coins += prize; d.contest.played++; d.contest.best = Math.max(d.contest.best, C.step); d.contest.won += prize; Save.save();
+    if (prize > 0) Sound.sfx(how === 'win' ? 'certificate' : 'buy');
+    const title = how === 'win' ? '🏆 Muschel-Millionär!' : how === 'walk' ? '👏 Klug ausgestiegen!' : '😮 Schade!';
+    const text = how === 'win' ? 'Du hast alle 15 Fragen richtig beantwortet. Das gelingt nur den Besten!' : how === 'walk' ? `Du hast ${C.step} von 15 Fragen geschafft und sicherst dir deinen Gewinn.` : `Du hast ${C.step} Frage${C.step === 1 ? '' : 'n'} richtig beantwortet.${prize ? ' Dank der Sicherheitsstufe gehst du trotzdem nicht leer aus.' : ' Beim nächsten Mal klappt’s bestimmt!'}`;
+    overlay(`<div class="panel results"><h2>${title}</h2><p>${text}</p><div class="bignum"><span class="shell-ico big"></span>+${fmt(prize)}</div><p>Neuer Kontostand von <b>${esc(d.name)}</b>: <b>${fmt(d.coins)} Muschel-Coins</b></p>
+      <div class="row"><button class="btn gold big" data-act="contestgo" data-arg="${Save.active}" data-default>🎤 Nochmal spielen</button><button class="btn" data-act="goto" data-arg="shop">🐚 Zum Shop</button><button class="btn" data-act="contestquit">🏠 Menü</button></div></div>`);
+    if (how === 'win') confetti();
+  }
+  function drawShow(ctx, t) {
+    const W = 870, H = 230; if (!C) return;
+    C.talkT -= 1 / 60; C.mood *= 0.99;
+    const g = ctx.createRadialGradient(W / 2, H * 1.1, 40, W / 2, H / 2, W * 0.7); g.addColorStop(0, '#2a4ab8'); g.addColorStop(0.6, '#141a5a'); g.addColorStop(1, '#070a26'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) { const a = Math.sin(t * 0.7 + i * 1.3) * 0.5; ctx.save(); ctx.translate(120 + i * 160, -10); ctx.rotate(a); const gg = ctx.createLinearGradient(0, 0, 0, 260); gg.addColorStop(0, ['rgba(120,200,255,0.35)', 'rgba(255,200,90,0.3)', 'rgba(200,120,255,0.3)'][i % 3]); gg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(60, 260); ctx.lineTo(-60, 260); ctx.fill(); ctx.restore(); }
+    ctx.restore();
+    ctx.font = 'bold 26px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = '#0a1040'; ctx.strokeText('DIE GROSSE MUSCHEL-SHOW', W / 2, 34); const tg = ctx.createLinearGradient(0, 12, 0, 40); tg.addColorStop(0, '#fff4b0'); tg.addColorStop(1, '#ffb020'); ctx.fillStyle = tg; ctx.fillText('DIE GROSSE MUSCHEL-SHOW', W / 2, 34);
+    for (let i = 0; i < 26; i++) { const x = 15 + i * 34; ctx.fillStyle = `rgba(255,${200 + (i % 3) * 20},120,${0.5 + 0.5 * Math.sin(t * 6 + i)})`; ctx.beginPath(); ctx.arc(x, 50, 3, 0, 7); ctx.fill(); }
+    Art.ell(ctx, W / 2, H - 10, W * 0.48, 34); ctx.fillStyle = 'rgba(120,180,255,0.18)'; ctx.fill();
+    // Showmaster Otto
+    Art.drawBoss(ctx, 'otto', 190, 120, 0.42, { t, talk: C.talkT > 0 });
+    // Podium + Delfin
+    const px = 650; Art.rr(ctx, px - 70, 150, 140, 80, 12); const pg = ctx.createLinearGradient(0, 150, 0, 230); pg.addColorStop(0, '#3a5ad8'); pg.addColorStop(1, '#1a2a7a'); Art.fillS(ctx, pg, 4, '#ffcc4a');
+    ctx.font = 'bold 18px Fredoka, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(S().name, px, 196);
+    const hop = C.mood > 0.3 ? Math.abs(Math.sin(t * 8)) * 16 * Math.min(1, C.mood) : 0;
+    const cos = Save.cosmetics(); if (cos.companion) Art.drawCompanion(ctx, cos.companion, px + 110, 150, t, -1);
+    Art.drawDolphin(ctx, { x: px, y: 110 - hop, facing: -1, color: S().color, t, cos, scale: 1.15, speed: 0.3, happy: C.mood > 0.3, hurt: C.mood < -0.5 && Math.floor(t * 3) % 2 === 0 });
+    // Publikum
+    const kinds = ['begleiter-ente', 'begleiter-krabbe', 'begleiter-kugelfisch', 'begleiter-seepferdchen', 'schildkroete', 'begleiter-krake'];
+    ctx.globalAlpha = 0.85; for (let i = 0; i < 13; i++) { const x = 30 + i * 68, y = 224 - (C.mood > 0.3 ? Math.abs(Math.sin(t * 9 + i)) * 10 : 0); if (x > 300 && x < 560) continue; Art.drawCompanion(ctx, kinds[i % kinds.length], x, y, t + i, i % 2 ? 1 : -1); } ctx.globalAlpha = 1;
+  }
 
   /* ---------- Menü-Hintergrund ---------- */
   let mt = 0;
