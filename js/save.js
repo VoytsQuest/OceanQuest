@@ -20,9 +20,9 @@
     { id: 'trail-regenbogen', name: 'Regenbogen-Trail', slot: 'trail', price: 1300, cat: 'effekte' },
     { id: 'schildkroete', name: 'Mini-Begleiter', slot: 'companion', price: 1600, cat: 'begleiter' }
   ];
-  const CATMAP = { 'Trikots': 'trikots', 'Badeanzüge': 'baden', 'Perücken': 'perruecken', 'Begleiter': 'begleiter' };
-  if (root.ArtExtras) root.ArtExtras.ITEMS.forEach(i => ITEMS.push({ id: i.id, name: i.name, hint: i.hint, slot: i.slot, price: i.price, cat: CATMAP[i.cat], premium: !!i.premium }));
-  const SLOTS = ['head', 'eyes', 'skin', 'fins', 'body', 'hair', 'trail', 'companion'];
+  const CATMAP = { 'Aussehen': 'aussehen', 'Trikots': 'trikots', 'Badeanzüge': 'baden', 'Perücken': 'perruecken', 'Begleiter': 'begleiter' };
+  if (root.ArtExtras) root.ArtExtras.ITEMS.forEach(i => ITEMS.push({ id: i.id, name: i.name, hint: i.hint, slot: i.slot, price: i.price, cat: CATMAP[i.cat], premium: !!i.premium, reward: !!i.reward }));
+  const SLOTS = ['head', 'eyes', 'skin', 'fins', 'body', 'hair', 'neck', 'trail', 'companion'];
   const COLORS = ['blau', 'rosa', 'gruen', 'lila', 'gelb'];
 
   function defaults() {
@@ -31,9 +31,11 @@
       defeated: [false, false, false, false, false, false, false, false],
       score: 0, coins: 0, best: {}, playTime: 0,
       exam: { unlocked: false, passed: false, best: 0, date: null, score: '' },
-      owned: [], equipped: { head: null, eyes: null, skin: null, fins: null, body: null, hair: null, trail: null, companion: null },
+      owned: [], equipped: { head: null, eyes: null, skin: null, fins: null, body: null, hair: null, neck: null, trail: null, companion: null },
       settings: { music: true, sfx: true, musicVol: 0.55, sfxVol: 0.8, touch: 'auto' },
-      resume: null, contest: { played: 0, best: 0, won: 0 }, savedAt: null
+      resume: null, contest: { played: 0, best: 0, won: 0, last: null }, savedAt: null,
+      stats: { correct: 0, wrong: 0, shells: 0, knocks: 0 },
+      football: { won: [false, false, false, false, false, false, false, false], scores: ['', '', '', '', '', '', '', ''], goals: 0, against: 0, tasks: 0, tasksRight: 0, points: 0, date: null }
     };
   }
   const num = (v, d, lo, hi) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -67,6 +69,12 @@
     }
     if (raw.contest && typeof raw.contest === 'object') d.contest = { played: Math.round(num(raw.contest.played, 0, 0, 1e6)), best: Math.round(num(raw.contest.best, 0, 0, 15)), won: Math.round(num(raw.contest.won, 0, 0, 1e9)) };
     d.savedAt = str(raw.savedAt, null, 30);
+    if (raw.contest && raw.contest.last && typeof raw.contest.last === 'object') { const l = raw.contest.last; d.contest.last = { step: Math.round(num(l.step, 0, 0, 15)), prize: Math.round(num(l.prize, 0, 0, 1e6)), how: ['win', 'walk', 'wrong'].includes(l.how) ? l.how : 'wrong', jokers: Math.round(num(l.jokers, 0, 0, 3)), date: str(l.date, '', 30) }; }
+    if (raw.stats && typeof raw.stats === 'object') ['correct', 'wrong', 'shells', 'knocks'].forEach(k => d.stats[k] = Math.round(num(raw.stats[k], 0, 0, 1e7)));
+    if (raw.football && typeof raw.football === 'object') { const f = raw.football;
+      if (Array.isArray(f.won)) d.football.won = d.football.won.map((_, i) => !!f.won[i]);
+      if (Array.isArray(f.scores)) d.football.scores = d.football.scores.map((_, i) => str(f.scores[i], '', 8));
+      ['goals', 'against', 'tasks', 'tasksRight', 'points'].forEach(k => d.football[k] = Math.round(num(f[k], 0, 0, 1e7))); d.football.date = str(f.date, null, 30); }
     return d;
   }
 

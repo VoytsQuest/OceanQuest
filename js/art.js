@@ -81,8 +81,9 @@
     ctx.save(); ctx.translate(14, 9); ctx.rotate(0.35 + pf);
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-4, 16, -16, 22); ctx.quadraticCurveTo(-8, 8, -10, -2); ctx.closePath();
     fillS(ctx, finFill || shade(c.body, -10), 2.2, outline);
-    if (cos.body && root.ArtExtras) root.ArtExtras.sleeve(ctx, cos.body, t);
     ctx.restore();
+    if (cos.body && root.ArtExtras) root.ArtExtras.sleeve(ctx, cos.body, t);
+    if (cos.neck && root.ArtExtras) root.ArtExtras.neck(ctx, cos.neck, t);
     // Auge + Mund
     drawEye(ctx, 30, -10, o.happy, t);
     ctx.beginPath(); ctx.moveTo(42, 8); ctx.quadraticCurveTo(54, 15, 64, 8); stroke(ctx, 2.4, outline);
@@ -103,6 +104,11 @@
     const h = cos.head, e = cos.eyes;
     if (e === 'taucherbrille') { rr(ctx, 26, -17, 18, 15, 5); fillS(ctx, 'rgba(150,230,255,0.55)', 2.5, '#e8a800'); ctx.beginPath(); ctx.moveTo(26, -10); ctx.lineTo(-2, -14); stroke(ctx, 3, '#e8a800'); }
     if (e === 'sonnenbrille') { ctx.beginPath(); ctx.moveTo(25, -14); ctx.lineTo(46, -14); ctx.lineTo(44, -4); ctx.quadraticCurveTo(34, 0, 27, -5); ctx.closePath(); fillS(ctx, '#111', 1.5, '#000'); ctx.beginPath(); ctx.moveTo(25, -13); ctx.lineTo(4, -17); stroke(ctx, 2.5, '#111'); ctx.beginPath(); ctx.moveTo(30, -12); ctx.lineTo(36, -12); stroke(ctx, 1.5, 'rgba(255,255,255,0.6)'); }
+    if (e === 'goldbrille') {
+      for (const cx of [31, 44]) { ell(ctx, cx, -10, 7.5, 7); fillS(ctx, 'rgba(60,40,0,0.75)', 3, '#e8b400'); ell(ctx, cx - 2, -12, 2.5, 1.6, -0.4); ctx.fillStyle = 'rgba(255,240,170,0.8)'; ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(38.5, -11); ctx.lineTo(36.5, -11); ctx.moveTo(23.5, -11); ctx.lineTo(2, -15); stroke(ctx, 3, '#e8b400');
+      const sp = (Math.sin(t * 3) + 1) / 2; star(ctx, 48, -17, 2 + sp * 2.5, '#fffbe0');
+    }
     if (e === 'schnorchel') { rr(ctx, 26, -17, 18, 15, 5); fillS(ctx, 'rgba(150,230,255,0.55)', 2.5, '#ff7a1a'); ctx.beginPath(); ctx.moveTo(26, -10); ctx.lineTo(0, -14); stroke(ctx, 3, '#ff7a1a'); ctx.beginPath(); ctx.moveTo(22, -14); ctx.lineTo(22, -46); ctx.quadraticCurveTo(22, -52, 28, -52); stroke(ctx, 5, '#ff7a1a'); }
     if (h === 'piratenhut') {
       ctx.save(); ctx.translate(14, -26); ctx.rotate(-0.12);
@@ -575,7 +581,7 @@
     switch (id) {
       case 'piratenhut': case 'krone': ctx.translate(-26, 66); ctx.scale(1.8, 1.8); drawCosmetics(ctx, { head: id }, t); break;
       case 'kopfhoerer': ctx.translate(-25, 28); ctx.scale(1.75, 1.75); drawCosmetics(ctx, { head: id }, t); break;
-      case 'taucherbrille': case 'sonnenbrille': ctx.translate(-42, 20); ctx.scale(2, 2); drawCosmetics(ctx, { eyes: id }, t); break;
+      case 'taucherbrille': case 'sonnenbrille': case 'goldbrille': ctx.translate(-42, 20); ctx.scale(2, 2); drawCosmetics(ctx, { eyes: id }, t); break;
       case 'schnorchel': ctx.translate(-36, 46); ctx.scale(1.6, 1.6); drawCosmetics(ctx, { eyes: id }, t); break;
       case 'feuer': case 'regenbogen': case 'galaxie': case 'kristall': dol({ skin: id }); break;
       case 'hai': case 'gold': dol({ fins: id }, 'blau'); break;
@@ -586,6 +592,7 @@
       default: {
         const X = root.ArtExtras; if (!X) break;
         if (X.OUTFITS[id]) drawDolphin(ctx, { x: 0, y: 6, facing: 1, color: 'blau', t, cos: { body: id }, scale: 0.8, speed: 0.2 });
+        else if (id === 'goldkette') drawDolphin(ctx, { x: -10, y: 4, facing: 1, color: 'blau', t, cos: { neck: id }, scale: 1.05, speed: 0.2 });
         else if (id.startsWith('peruecke-')) drawDolphin(ctx, { x: -18, y: 26, facing: 1, color: 'blau', t, cos: { hair: id }, scale: 1.05, speed: 0.2 });
         else if (id.startsWith('begleiter-')) { ctx.scale(1.5, 1.5); X.drawBuddy(ctx, id, 0, 2, t, 1); }
       }

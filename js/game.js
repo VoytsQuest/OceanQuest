@@ -190,7 +190,7 @@
       const stars = 1 + (L.fails <= 1 ? 1 : 0) + (time <= W.par ? 1 : 0);
       const levelScore = L.score + 500 + timeBonus;
       const coins = L.shellsGot * 5 + L.pearlsGot * 25 + L.correct * 15 + 150 + (L.egg && L.egg.found ? 300 : 0);
-      return { egg: L.egg && L.egg.found ? L.egg.text : null, world: L.wid, name: W.name, time, timeBonus, shells: L.shellsGot, totalShells: L.totalShells, pearls: L.pearlsGot, correct: L.correct, fails: L.fails, score: levelScore, stars, coins, deaths: L.deaths };
+      return { knocks: L.knocks, egg: L.egg && L.egg.found ? L.egg.text : null, world: L.wid, name: W.name, time, timeBonus, shells: L.shellsGot, totalShells: L.totalShells, pearls: L.pearlsGot, correct: L.correct, fails: L.fails, score: levelScore, stars, coins, deaths: L.deaths };
     },
     render(ctx) { if (L) render(ctx); },
     // Spielstand mitten im Level: letzter Checkpoint + bereits gesammelte Dinge

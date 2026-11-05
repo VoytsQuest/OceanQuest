@@ -28,7 +28,8 @@
     togglePause() {
       if (mode === 'finale') {
         if (Finale.paused) { Finale.paused = false; closeOverlay(); return; }
-        Finale.paused = true; overlay(`<div class="panel pause"><h2>Pause</h2><button class="btn big" data-act="resume">▶ Weiter</button><button class="btn" data-act="final">⟲ Finale neu starten</button><button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button><button class="btn" data-act="quit">⌂ Zur Weltkarte</button></div>`); return;
+        Finale.paused = true; const lg = footIdx !== null;
+        overlay(`<div class="panel pause"><h2>Pause</h2><button class="btn big" data-act="resume">▶ Weiter</button><button class="btn" data-act="${lg ? 'leaguematch' : 'final'}" data-arg="${lg ? footIdx : ''}">⟲ Spiel neu starten</button><button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button><button class="btn" data-act="${lg ? 'leaguequit' : 'quit'}">⌂ ${lg ? 'Zur Liga' : 'Zur Weltkarte'}</button></div>`); return;
       }
       if (mode !== 'game') return;
       const L = Game.L; if (!L) return;
@@ -130,7 +131,12 @@
       case 'nextworld': startWorld(Math.min(8, +arg + 1)); break;
       case 'final': Finale.paused = false; Game.stop(); startFinal(); break;
       case 'kickoff': closeOverlay(); Finale.kickoff(); break;
-      case 'cert': show('cert'); break;
+      case 'cert': show('cert', { kind: arg || 'game' }); break;
+      case 'football': if (footballOpen()) show('league'); else overlay(`<div class="panel"><h2>⚽ Fußball-Modus</h2><p>Der Fußball-Modus öffnet sich, wenn du beides geschafft hast:</p><ul class="checks req"><li class="${S().exam.passed ? 'ok' : 'no'}">Das Spiel durchgespielt (Finale gegen Mbappé gewonnen)</li><li class="${S().contest.best >= 5 ? 'ok' : 'no'}">Im Mathe-Contest mindestens die erste Sicherheitsstufe (Frage 5) erreicht</li></ul><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
+      case 'leaguego': startWarmup(+arg); break;
+      case 'leaguematch': Finale.paused = false; closeOverlay(); startLeagueMatch(+arg); break;
+      case 'leaguequit': Finale.paused = false; Finale.stop(); closeOverlay(); footIdx = null; Sound.forWorld(0); show('league'); break;
+      case 'equip': { const it = Save.ITEMS.find(i => i.id === arg); if (it && S().owned.includes(arg)) { S().equipped[it.slot] = arg; Save.save(); Sound.sfx('buy'); toast(it.name + ' angelegt!'); if (el) { el.disabled = true; el.textContent = '✔ Angelegt'; } } break; }
       case 'print': printCert(); break;
       case 'pdf': pdfCert(); break;
     }
@@ -160,6 +166,7 @@
         <button class="btn" data-act="continue" ${has ? 'data-default' : 'disabled'}>⟳ Fortsetzen${has && S().resume ? ' · Welt ' + S().resume.world : ''}</button>
         <button class="btn" data-act="goto" data-arg="slots">💾 Spielstände</button>
         <button class="btn contestbtn" data-act="contest">🎤 Mathe-Contest</button>
+        <button class="btn footbtn ${has && footballOpen() ? '' : 'lockedbtn'}" data-act="football">⚽ Fußball-Modus${has && footballOpen() ? '' : ' 🔒'}</button>
         <button class="btn" data-act="goto" data-arg="create">🐬 Mein Delfin</button>
         <button class="btn" data-act="goto" data-arg="shop">🐚 Delfin-Shop</button>
         <button class="btn" data-act="${has ? 'goto' : 'continue'}" data-arg="worlds">🗺 Welten</button>
@@ -196,7 +203,7 @@
           <div class="wc-info">${open ? (b ? `${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)} · ${fmtTime(b.time)}` : 'Neu!') : '🔒 gesperrt'}</div>
           ${done ? '<span class="wc-pearl" title="Perle erhalten"></span>' : ''}</button>`;
       }).join('')}</div>
-      <div class="examrow">${d.exam.unlocked ? `<button class="btn big gold" data-act="final">⚽ Großes Finale: Fußball gegen Mbappé</button>${d.exam.passed ? '<button class="btn" data-act="cert">📜 Urkunde ansehen</button>' : ''}` : '<div class="note">Besiege alle 8 Bosse – dann wartet Mbappé zum großen Fußball-Finale.</div>'}</div>`;
+      <div class="examrow">${d.exam.unlocked ? `<button class="btn big gold" data-act="final">⚽ Großes Finale: Fußball gegen Mbappé</button>${d.exam.passed ? '<button class="btn" data-act="cert" data-arg="game">📜 Urkunde ansehen</button>' : ''}` : '<div class="note">Besiege alle 8 Bosse – dann wartet Mbappé zum großen Fußball-Finale.</div>'}</div>`;
       ui.querySelectorAll('.wc-boss').forEach(el => el.appendChild(bossCanvas(el.dataset.boss, 200, 130, 0.42, el.dataset.grey === '1')));
     },
     shop(o) {
@@ -210,7 +217,7 @@
         <div class="itemgrid">${items.map(it => {
           const own = S().owned.includes(it.id), eq = S().equipped[it.slot] === it.id;
           return `<button class="item ${own ? 'own' : ''} ${eq ? 'eq' : ''} ${it.premium ? 'premium' : ''}" data-act="buy" data-arg="${it.id}" title="${esc(it.hint || it.name)}">${it.premium ? '<span class="ptag">Premium</span>' : ''}<div class="ico" data-ico="${it.id}"></div><div class="iname">${it.name}</div>
-            <div class="price">${eq ? '✔ angelegt' : own ? 'Anlegen' : `<span class="shell-ico"></span>${fmt(it.price)}`}</div></button>`;
+            <div class="price ${it.reward && !own ? 'rwd' : ''}">${eq ? '✔ angelegt' : own ? 'Anlegen' : it.reward ? '🏆 Fußball-Modus' : `<span class="shell-ico"></span>${fmt(it.price)}`}</div></button>`;
         }).join('')}</div></div>`;
       $('#sprev').appendChild(miniCanvas(300, 190, (ctx, t) => { const c = Save.cosmetics(); if (c.companion) Art.drawCompanion(ctx, c.companion, 62, 132, t, 1); Art.drawDolphin(ctx, { x: 160, y: 95 + Math.sin(t * 2) * 5, facing: 1, color: S().color, t, cos: c, scale: 1.45, speed: 0.4 }); }, true));
       ui.querySelectorAll('.ico').forEach(el => el.appendChild(miniCanvas(150, 86, (ctx, t) => Art.drawItemIcon(ctx, el.dataset.ico, 75, 46, 1, t), true)));
@@ -252,7 +259,7 @@
           <li>Falsche Antwort? Kein Problem – du bekommst einen Tipp und darfst es nochmal versuchen.</li></ul>
           <div class="goal"><b>Dein Ziel:</b> Besiege alle 8 Meeresbosse, bestehe die große Prüfung und erhalte die Urkunde „Meister der 8 Meere“!</div></div></div></div>`;
     },
-    cert() { renderCertScreen(); },
+    cert(o) { renderCertScreen(o.kind || 'game'); },
     slots() {
       ui.innerHTML = header('Spielstände', 'Jeder Spielstand hat seinen eigenen Delfin, Fortschritt und eigene Coins') + `<div class="slotgrid">${[0, 1, 2].map(i => { const d = Save.slots[i];
         return d ? `<div class="slot ${i === Save.active ? 'act' : ''}"><div class="slot-no">Spielstand ${i + 1}${i === Save.active ? ' · aktiv' : ''}</div><div class="slot-cv" data-i="${i}"></div><div class="slot-name">${esc(d.name)}</div>
@@ -262,6 +269,14 @@
           : `<div class="slot empty"><div class="slot-no">Spielstand ${i + 1}</div><div class="slot-plus">+</div><div class="slot-sub">Noch frei</div><button class="btn gold" data-act="slotnew" data-arg="${i}">➕ Neuer Delfin</button></div>`; }).join('')}</div>
         <div class="codebar"><span>📲 Auf ein anderes Gerät wechseln:</span><button class="btn small" data-act="codeshow">Code für Spielstand ${Save.active + 1} anzeigen</button><button class="btn small" data-act="codein">Code eingeben</button></div>`;
       ui.querySelectorAll('.slot-cv').forEach(el => { const d = Save.slots[+el.dataset.i]; el.appendChild(miniCanvas(300, 130, (ctx, t) => { const c = Object.assign({}, d.equipped); if (c.companion) Art.drawCompanion(ctx, c.companion, 58, 92, t, 1); Art.drawDolphin(ctx, { x: 160, y: 62 + Math.sin(t * 2 + +el.dataset.i) * 4, facing: 1, color: d.color, t, cos: c, scale: 1.2, speed: 0.35 }); }, true)); });
+    },
+    league() {
+      const d = S(), f = d.football; const wins = f.won.filter(Boolean).length; Sound.forWorld(0);
+      ui.innerHTML = header('Fußball-Modus', `${esc(d.name)} · ${wins} von 8 Stadien gewonnen · vor jedem Spiel 3 Aufwärm-Aufgaben`) + `<div class="leaguegrid">${WORLDS.map((W, i) => { const open = i === 0 || f.won[i - 1], won = f.won[i], rw = REWARDS[i];
+        return `<button class="stadium ${open ? '' : 'locked'} ${won ? 'won' : ''}" data-act="${open ? 'leaguego' : 'closeov'}" data-arg="${i}" ${open ? '' : 'title="Gewinne zuerst im vorherigen Stadion"'}><div class="st-cv" data-boss="${W.boss}" data-grey="${open ? 0 : 1}"></div><div class="st-name">${STADIUMS[i]}</div><div class="st-res">${won ? '✔ Gewonnen ' + f.scores[i] : open ? '▶ Aufwärmen & Anpfiff' : '🔒 gesperrt'}</div>${rw ? `<span class="st-rw" title="Belohnung">🏆</span>` : ''}</button>`; }).join('')}</div>
+        <div class="rewardbar"><b>Belohnungen:</b>${Object.entries(REWARDS).map(([i, id]) => { const it = Save.ITEMS.find(x => x.id === id); const own = d.owned.includes(id); return `<span class="rw ${own ? 'own' : ''}"><span class="rwico" data-ico="${id}"></span>${esc(it.name)}<small>${own ? '✔ gewonnen' : 'Stadion ' + (+i + 1)}</small></span>`; }).join('')}${f.won.every(Boolean) ? '<button class="btn gold small" data-act="cert" data-arg="football">📜 Urkunde</button>' : ''}</div>`;
+      ui.querySelectorAll('.st-cv').forEach(el => el.appendChild(bossCanvas(el.dataset.boss, 200, 110, 0.36, el.dataset.grey === '1')));
+      ui.querySelectorAll('.rwico').forEach(el => el.appendChild(itemIcon(el.dataset.ico, 90, 54)));
     },
     contestpick() {
       ui.innerHTML = header('Mathe-Contest', 'Wähle deinen Delfin – die gewonnenen Muschel-Coins landen auf seinem Konto') + `<div class="slotgrid">${[0, 1, 2].map(i => { const d = Save.slots[i];
@@ -275,6 +290,7 @@
 
   function buy(id) {
     const it = Save.ITEMS.find(i => i.id === id); const d = S();
+    if (it.reward && !d.owned.includes(id)) { toast('🏆 ' + it.name + ' gewinnst du im Fußball-Modus!'); return; }
     if (d.owned.includes(id)) { d.equipped[it.slot] = d.equipped[it.slot] === id ? null : id; Save.save(); Sound.sfx('switch'); }
     else if (d.coins >= it.price) { d.coins -= it.price; d.owned.push(id); d.equipped[it.slot] = id; Save.save(); Sound.sfx('buy'); toast(it.name + ' gekauft!'); }
     else { toast(`Dir fehlen noch ${fmt(it.price - d.coins)} Muschel-Coins.`); return; }
@@ -381,6 +397,7 @@
     if (w < 8 && d.unlocked < w + 1) { d.unlocked = w + 1; unlockedMsg = `🔓 Welt ${w + 1} freigeschaltet: ${WORLDS[w].name}!`; }
     if (w === 8 && !d.exam.unlocked) { d.exam.unlocked = true; unlockedMsg = '⚽ Das große Finale gegen Mbappé ist freigeschaltet!'; }
     if (d.resume && d.resume.world === w) d.resume = null;
+    d.stats.correct += st.correct; d.stats.wrong += st.fails; d.stats.shells += st.shells; d.stats.knocks += st.knocks || 0;
     d.coins += st.coins; d.playTime += st.time; d.score = WORLDS.reduce((a, x) => a + (d.best[x.id] ? d.best[x.id].score : 0), 0); Save.save();
     if (unlockedMsg) setTimeout(() => Sound.sfx('unlock'), 600);
     const o = overlay(`<div class="panel results"><h2>${WORLDS[w - 1].bossName} besiegt!</h2>
@@ -398,7 +415,7 @@
 
   /* ---------- Großes Finale: Fußball gegen Mbappé ---------- */
   function startFinal() {
-    const d = S(); if (!d.exam.unlocked) { toast('Besiege zuerst alle 8 Bosse!'); return; }
+    footIdx = null; const d = S(); if (!d.exam.unlocked) { toast('Besiege zuerst alle 8 Bosse!'); return; }
     closeOverlay(); mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
     Finale.start((won, score) => {
       if (won) { d.exam.passed = true; d.exam.score = score; d.exam.date = new Date().toLocaleDateString('de-DE'); d.coins += 1000; Save.save(); }
@@ -418,8 +435,9 @@
   }
 
   /* ---------- Urkunde ---------- */
-  function drawCertificate(cv) {
-    const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height; const d = S(); const k = W / 1600;
+  function drawCertificate(cv, kind) {
+    kind = kind || 'game';
+    const ctx = cv.getContext('2d'); const W = cv.width, H = cv.height; const d = S(); const k = W / 1600; const cl = d.contest.last || { step: 0, prize: 0, how: 'wrong', jokers: 0, date: '' }; const f = d.football;
     ctx.save(); ctx.scale(k, k); const w = 1600, h = 1131;
     const g = ctx.createRadialGradient(w / 2, h / 2, 200, w / 2, h / 2, 1000); g.addColorStop(0, '#fff8e2'); g.addColorStop(1, '#ecd49a'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     const r = Art.rng(42); for (let i = 0; i < 400; i++) { ctx.fillStyle = `rgba(150,110,40,${r() * 0.06})`; ctx.beginPath(); ctx.arc(r() * w, r() * h, 2 + r() * 30, 0, 7); ctx.fill(); }
@@ -432,35 +450,55 @@
     ctx.textAlign = 'center';
     const gt = ctx.createLinearGradient(0, 120, 0, 220); gt.addColorStop(0, '#2a8ad8'); gt.addColorStop(1, '#0a4a8a');
     ctx.font = 'bold 110px Fredoka, sans-serif'; ctx.lineWidth = 10; ctx.strokeStyle = '#ffd23a'; ctx.strokeText('OCEANQUEST', w / 2, 210); ctx.fillStyle = gt; ctx.fillText('OCEANQUEST', w / 2, 210);
-    ctx.font = 'bold 56px Fredoka, sans-serif'; ctx.fillStyle = '#7a4a10'; ctx.fillText('MEISTER DER 8 MEERE', w / 2, 290);
-    ctx.font = '600 30px Fredoka, sans-serif'; ctx.fillStyle = '#4a3010'; ctx.fillText('Herzlichen Glückwunsch!', w / 2, 360);
+    const SUB = { game: 'MEISTER DER 8 MEERE', contest: cl.how === 'win' ? 'MUSCHEL-MILLIONÄR' : 'DIE GROSSE MUSCHEL-SHOW', football: 'FUSSBALL-MEISTER DER 8 MEERE' }[kind];
+    ctx.font = `bold ${SUB.length > 26 ? 44 : 56}px Fredoka, sans-serif`; ctx.fillStyle = '#7a4a10'; ctx.fillText(SUB, w / 2, 290);
+    ctx.font = '600 30px Fredoka, sans-serif'; ctx.fillStyle = '#4a3010'; ctx.fillText(kind === 'contest' && cl.how !== 'win' ? 'Super gemacht!' : 'Herzlichen Glückwunsch!', w / 2, 360);
     const nm = d.childName ? `${d.childName} mit Delfin ${d.name}` : `Delfin ${d.name}`;
     ctx.font = 'bold 64px Fredoka, sans-serif'; ctx.fillStyle = '#0a3a6a'; ctx.fillText(nm, w / 2, 445);
     ctx.beginPath(); ctx.moveTo(w / 2 - 420, 470); ctx.lineTo(w / 2 + 420, 470); ctx.lineWidth = 3; ctx.strokeStyle = '#b8860b'; ctx.stroke();
     ctx.font = '500 28px Fredoka, sans-serif'; ctx.fillStyle = '#3a2a10';
-    ['Du hast alle acht Meeresbosse besiegt, die Geheimnisse der Tiefsee entdeckt', 'und Mbappé im großen Unterwasser-Finale ' + (d.exam.score || '') + ' geschlagen.', 'Du bist ein wahrer Meister der acht Meere!'].forEach((l, i) => ctx.fillText(l, w / 2, 520 + i * 42));
-    // Bosse
-    WORLDS.forEach((W, i) => { const x = 330 + i * 134, y = 735; Art.ell(ctx, x, y, 56, 56); Art.fillS(ctx, '#0a4a7a', 5, '#d4a940'); ctx.save(); ctx.beginPath(); ctx.arc(x, y, 52, 0, 7); ctx.clip(); Art.drawBoss(ctx, W.boss, x, y + 6, 0.22, { t: 0 }); ctx.restore(); ctx.font = 'bold 20px Fredoka, sans-serif'; ctx.fillStyle = '#3a2a10'; ctx.fillText(W.bossName + ' ✔', x, y + 82); });
-    // Werte
-    ctx.font = '600 26px Fredoka, sans-serif'; ctx.fillStyle = '#3a2a10';
-    const total = WORLDS.reduce((a, x) => a + (d.best[x.id] ? d.best[x.id].score : 0), 0);
-    ctx.fillText(`Gesamtpunktzahl: ${fmt(total)}   ·   Gesamtspielzeit: ${fmtTime(d.playTime)}   ·   Finale: ${d.exam.score || '–'}`, w / 2, 885);
-    ctx.textAlign = 'left'; ctx.fillText('Datum: ' + (d.exam.date || new Date().toLocaleDateString('de-DE')), 150, 990);
+    const LINES = {
+      game: ['Du hast alle acht Meeresbosse besiegt, die Geheimnisse der Tiefsee entdeckt', 'und Mbappé im großen Unterwasser-Finale ' + (d.exam.score || '') + ' geschlagen.', 'Du bist ein wahrer Meister der acht Meere!'],
+      contest: cl.how === 'win' ? ['Du hast in der großen Muschel-Show alle 15 Mathe-Fragen', 'richtig beantwortet und den Hauptgewinn geholt.', 'Ein echtes Rechen-Ass!'] : [`Du hast in der großen Muschel-Show ${cl.step} von 15 Mathe-Fragen`, `richtig beantwortet und ${fmt(cl.prize)} Muschel-Coins gewonnen.`, cl.step >= 10 ? 'Eine starke Leistung!' : cl.step >= 5 ? 'Gut gerechnet – weiter so!' : 'Jede Show macht dich besser!'],
+      football: ['Du hast in allen acht Stadien gegen die Meeresbosse gewonnen', `und dabei ${f.goals} Tore geschossen.`, 'Ein wahrer Unterwasser-Fußballstar!']
+    }[kind];
+    LINES.forEach((l, i) => ctx.fillText(l, w / 2, 520 + i * 42));
+    if (kind === 'contest') {
+      const LAD = [20, 40, 70, 100, 150, 200, 300, 400, 600, 800, 1000, 1500, 2000, 3000, 5000];
+      for (let i = 0; i < 15; i++) { const x = w / 2 + (i - 7) * 74, y = 730, got = i < cl.step, safe = i === 4 || i === 9;
+        Art.ell(ctx, x, y, 30, 30); Art.fillS(ctx, got ? '#ffcc2a' : '#f4e6c0', safe ? 5 : 3, safe ? '#c8283a' : '#a87a00');
+        ctx.font = 'bold 22px Fredoka, sans-serif'; ctx.fillStyle = got ? '#5a3a00' : '#b8a070'; ctx.fillText(String(i + 1), x, y + 8);
+        ctx.font = '500 15px Fredoka, sans-serif'; ctx.fillStyle = '#5a4a2a'; ctx.fillText(fmt(LAD[i]), x, y + 52); }
+      ctx.font = 'bold 30px Fredoka, sans-serif'; ctx.fillStyle = '#0a4a7a'; ctx.fillText(`Gewinn: ${fmt(cl.prize)} Muschel-Coins`, w / 2, 830);
+    } else {
+      WORLDS.forEach((W, i) => { const x = 330 + i * 134, y = 735; Art.ell(ctx, x, y, 56, 56); Art.fillS(ctx, '#0a4a7a', 5, '#d4a940'); ctx.save(); ctx.beginPath(); ctx.arc(x, y, 52, 0, 7); ctx.clip(); Art.drawBoss(ctx, W.boss, x, y + 6, 0.22, { t: 0 }); ctx.restore(); ctx.font = 'bold 20px Fredoka, sans-serif'; ctx.fillStyle = '#3a2a10'; ctx.fillText(W.bossName + (kind === 'football' ? ' ' + (f.scores[i] || '') : ' ✔'), x, y + 82); });
+    }
+    ctx.fillStyle = '#3a2a10'; const total = WORLDS.reduce((a, x) => a + (d.best[x.id] ? d.best[x.id].score : 0), 0); const st = d.stats;
+    const VALS = {
+      game: [`Richtig gelöste Aufgaben: ${fmt(st.correct)}   ·   Falsche Antworten: ${fmt(st.wrong)}   ·   Gesammelte Muscheln: ${fmt(st.shells)}   ·   Weggestoßene Gegner: ${fmt(st.knocks)}`, `Gesamtpunktzahl: ${fmt(total)}   ·   Gesamtspielzeit: ${fmtTime(d.playTime)}   ·   Finale: ${d.exam.score || '–'}`],
+      contest: [`Richtig beantwortet: ${cl.step} von 15   ·   Joker eingesetzt: ${cl.jokers} von 3   ·   Gewinn: ${fmt(cl.prize)} Coins`, `Bester Lauf bisher: Frage ${d.contest.best}   ·   Shows gespielt: ${d.contest.played}`],
+      football: [`Tore: ${f.goals} : ${f.against}   ·   Aufwärm-Aufgaben richtig: ${f.tasksRight} von ${f.tasks}`, `Fußball-Punkte: ${fmt(f.points)}`]
+    }[kind];
+    ctx.font = '600 24px Fredoka, sans-serif'; ctx.fillText(VALS[0], w / 2, 878); ctx.font = '500 22px Fredoka, sans-serif'; ctx.fillText(VALS[1], w / 2, 916);
+    ctx.font = '600 26px Fredoka, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Datum: ' + ({ game: d.exam.date, contest: cl.date, football: f.date }[kind] || new Date().toLocaleDateString('de-DE')), 150, 990);
     ctx.textAlign = 'center'; ctx.font = 'bold 34px Fredoka, sans-serif'; ctx.fillStyle = '#0a4a8a'; ctx.fillText('VoytsQuest', w / 2, 1000); ctx.font = '500 18px Fredoka, sans-serif'; ctx.fillStyle = '#5a4a2a'; ctx.fillText('Lernspiele mit Abenteuer', w / 2, 1026);
     // Delfin + Siegel
     Art.drawDolphin(ctx, { x: 210, y: 300, facing: 1, color: d.color, t: 0.3, cos: Save.cosmetics(), scale: 1.6, happy: true });
     ctx.save(); ctx.translate(w - 250, 985); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; Art.ell(ctx, Math.cos(a) * 70, Math.sin(a) * 70, 20, 20); ctx.fillStyle = '#a81a2a'; ctx.fill(); }
     Art.ell(ctx, 0, 0, 76, 76); Art.fillS(ctx, '#c8283a', 4, '#7a0a1a'); Art.ell(ctx, 0, 0, 58, 58); Art.stroke(ctx, 3, '#ffb0b0');
-    ctx.font = 'bold 18px Fredoka, sans-serif'; ctx.fillStyle = '#ffe0e0'; ctx.textAlign = 'center'; ctx.fillText('8 MEERE', 0, -24); Art.drawPearl(ctx, 0, 10, 0, 18, true); ctx.restore();
+    ctx.font = 'bold 18px Fredoka, sans-serif'; ctx.fillStyle = '#ffe0e0'; ctx.textAlign = 'center'; ctx.fillText({ game: '8 MEERE', contest: 'SHOW', football: 'CHAMPION' }[kind], 0, -24); Art.drawPearl(ctx, 0, 10, 0, 18, true); ctx.restore();
     ctx.restore();
   }
-  function renderCertScreen() {
-    const d = S(); if (!d.exam.passed) { show('worlds'); return; }
-    ui.innerHTML = header('Deine Urkunde') + `<div class="certwrap"><canvas id="certcv" width="1600" height="1131"></canvas>
+  function renderCertScreen(kind) {
+    const d = S(); const ok = { game: d.exam.passed, contest: !!d.contest.last, football: d.football.won.every(Boolean) }[kind];
+    if (!ok) { toast('Diese Urkunde gibt es noch nicht.'); show('main'); return; }
+    const title = { game: 'Deine Urkunde', contest: 'Urkunde: Muschel-Show', football: 'Urkunde: Fußball-Modus' }[kind];
+    const back = { game: ['worlds', '🗺 Weltkarte'], contest: ['contestpick', '🎤 Zur Show'], football: ['league', '🏟 Zur Liga'] }[kind];
+    ui.innerHTML = header(title) + `<div class="certwrap"><canvas id="certcv" width="1600" height="1131"></canvas>
       <div class="certside"><label class="lbl small">Dein Name (freiwillig):<input id="cn2" maxlength="30" value="${esc(d.childName)}" placeholder="Name des Kindes"></label>
-      ${/claude/.test(location.hostname) && window.top !== window.self ? '<p class="note">Drucken und PDF-Export funktionieren in der veröffentlichten Version (z. B. GitHub Pages).</p>' : '<button class="btn gold" data-act="print">🖨 Drucken</button><button class="btn gold" data-act="pdf">📄 Als PDF speichern</button>'}<button class="btn" data-act="goto" data-arg="worlds">🗺 Weltkarte</button></div></div>`;
-    const cv = $('#certcv'); drawCertificate(cv); Sound.sfx('certificate');
-    $('#cn2').addEventListener('input', e => { d.childName = e.target.value.slice(0, 30); Save.save(); drawCertificate(cv); });
+      ${/claude/.test(location.hostname) && window.top !== window.self ? '<p class="note">Drucken und PDF-Export funktionieren in der veröffentlichten Version (z. B. GitHub Pages).</p>' : '<button class="btn gold" data-act="print">🖨 Drucken</button><button class="btn gold" data-act="pdf">📄 Als PDF speichern</button>'}<button class="btn" data-act="goto" data-arg="${back[0]}">${back[1]}</button></div></div>`;
+    const cv = $('#certcv'); drawCertificate(cv, kind); Sound.sfx('certificate');
+    $('#cn2').addEventListener('input', e => { d.childName = e.target.value.slice(0, 30); Save.save(); drawCertificate(cv, kind); });
   }
   function printCert() {
     const cv = $('#certcv'); const pa = $('#print-area'); pa.innerHTML = ''; const img = new Image(); img.src = cv.toDataURL('image/png'); pa.appendChild(img);
@@ -579,12 +617,13 @@
   }
   function endContest(prize, how) {
     if (screen !== 'contest') return; const d = S();
-    d.coins += prize; d.contest.played++; d.contest.best = Math.max(d.contest.best, C.step); d.contest.won += prize; Save.save();
+    d.coins += prize; d.contest.played++; d.contest.best = Math.max(d.contest.best, C.step); d.contest.won += prize;
+    d.contest.last = { step: C.step, prize, how, jokers: Object.values(C.jokers).filter(v => !v).length, date: new Date().toLocaleDateString('de-DE') }; Save.save();
     if (prize > 0) Sound.sfx(how === 'win' ? 'certificate' : 'buy');
     const title = how === 'win' ? '🏆 Muschel-Millionär!' : how === 'walk' ? '👏 Klug ausgestiegen!' : '😮 Schade!';
     const text = how === 'win' ? 'Du hast alle 15 Fragen richtig beantwortet. Das gelingt nur den Besten!' : how === 'walk' ? `Du hast ${C.step} von 15 Fragen geschafft und sicherst dir deinen Gewinn.` : `Du hast ${C.step} Frage${C.step === 1 ? '' : 'n'} richtig beantwortet.${prize ? ' Dank der Sicherheitsstufe gehst du trotzdem nicht leer aus.' : ' Beim nächsten Mal klappt’s bestimmt!'}`;
     overlay(`<div class="panel results"><h2>${title}</h2><p>${text}</p><div class="bignum"><span class="shell-ico big"></span>+${fmt(prize)}</div><p>Neuer Kontostand von <b>${esc(d.name)}</b>: <b>${fmt(d.coins)} Muschel-Coins</b></p>
-      <div class="row"><button class="btn gold big" data-act="contestgo" data-arg="${Save.active}" data-default>🎤 Nochmal spielen</button><button class="btn" data-act="goto" data-arg="shop">🐚 Zum Shop</button><button class="btn" data-act="contestquit">🏠 Menü</button></div></div>`);
+      <div class="row"><button class="btn gold big" data-act="contestgo" data-arg="${Save.active}" data-default>🎤 Nochmal spielen</button><button class="btn" data-act="cert" data-arg="contest">📜 Urkunde</button><button class="btn" data-act="goto" data-arg="shop">🐚 Zum Shop</button><button class="btn" data-act="contestquit">🏠 Menü</button></div></div>`);
     if (how === 'win') confetti();
   }
   function drawShow(ctx, t) {
@@ -608,6 +647,75 @@
     // Publikum
     const kinds = ['begleiter-ente', 'begleiter-krabbe', 'begleiter-kugelfisch', 'begleiter-seepferdchen', 'schildkroete', 'begleiter-krake'];
     ctx.globalAlpha = 0.85; for (let i = 0; i < 13; i++) { const x = 30 + i * 68, y = 224 - (C.mood > 0.3 ? Math.abs(Math.sin(t * 9 + i)) * 10 : 0); if (x > 300 && x < 560) continue; Art.drawCompanion(ctx, kinds[i % kinds.length], x, y, t + i, i % 2 ? 1 : -1); } ctx.globalAlpha = 1;
+  }
+
+  /* ---------- Fußball-Modus: Liga durch alle 8 Stadien ---------- */
+  let footIdx = null;
+  const STADIUMS = ['Willys Korallen-Arena', 'Timmys Wrack-Stadion', 'Günthers Eis-Arena', 'Bobs Dschungel-Kessel', 'Lamas Tempel-Stadion', 'Ottos Tintenfass-Arena', 'Herberts Leucht-Stadion', 'Mbappés Vulkan-Arena'];
+  const REWARDS = { 1: 'goldbrille', 3: 'goldkette', 5: 'begleiter-fussballfisch', 7: 'trikot-winner' };
+  const BOSS_SCALE = { willy: 0.3, timmy: 0.28, guenther: 0.26, bob: 0.42, lama: 0.26, otto: 0.28, herbert: 0.28, mbappe: 0.3 };
+  const FOOT_TAUNTS = {
+    willy: { ai: ['Tor! Ich hab’s genau gesehen – mit Brille!', 'Ein Professoren-Schuss, ganz klar!'], player: ['Moment … wo ist der Ball? Ach, im Tor.', 'Meine Brille war beschlagen!'], lose: 'Ein Professor gewinnt eben immer! Fast immer.', win: 'Gratuliere! Du spielst besser, als ich rechne.' },
+    timmy: { ai: ['Arrr! Volltreffer!', 'Das war ein echter Piratenschuss!'], player: ['Ein Seestern hat mich abgelenkt!', 'Arrr … gut geschossen.'], lose: 'Der Pokal gehört mir, harr harr!', win: 'Ich ergebe mich! Aber nur im Fußball.' },
+    guenther: { ai: ['Ein Tor mit dreifachem Salto!', 'Eleganz pur!'], player: ['Ich bin ausgerutscht!', 'Brrr, das war eiskalt!'], lose: 'Bestnote für meine Fußball-Kür!', win: 'Bravo! Das war eine Kür mit Bestnote.' },
+    bob: { ai: ['Klein, aber TOR!', 'Mein riesiges Gehirn hat das berechnet!'], player: ['Grrr! Meine Zähne klappern!', 'Das war … beeindruckend.'], lose: 'Klein, aber unschlagbar!', win: 'Okay, okay! Du bist besser. Ein bisschen.' },
+    lama: { ai: ['Als König befehle ich: Tor!', 'Ein königlicher Schuss!'], player: ['Moment, für wen spiele ich nochmal?', 'Meine Krone wackelt!'], lose: 'Der König gewinnt! … Oder? Ja!', win: 'Ich befehle dir … den Pokal zu nehmen!' },
+    otto: { ai: ['Acht Arme, ein Tor!', 'Mit dem dritten Arm von links!'], player: ['Ich hab mich verknotet!', 'Arm fünf hat geschlafen!'], lose: 'Acht Arme sind eben besser als zwei Flossen!', win: 'Du hast mich entknotet – Glückwunsch!' },
+    herbert: { ai: ['Tor! Hast du’s gesehen? Ich auch nicht!', 'Da ist mir ein Licht aufgegangen!'], player: ['Wer hat das Licht ausgemacht?', 'Uff, das hat meine Lampe getroffen!'], lose: 'Ich bin eben ein helles Köpfchen!', win: 'Du bist der hellste Stern der Tiefsee!' },
+    mbappe: { ai: ['Tooor! Unbesiegbar!', 'Megalodon-Power!'], player: ['Mein T-Shirt ist schuld!', 'Glück gehabt! Nochmal schaffst du das nicht!'], lose: 'Der König der Tiefsee bleibt ungeschlagen!', win: 'Unglaublich – du bist der Fußball-Meister der acht Meere!' }
+  };
+  function footballOpen() { const d = S(); return d.created && d.exam.passed && d.contest.best >= 5; }
+  function itemIcon(id, w, h) { return miniCanvas(w || 120, h || 70, (ctx, t) => Art.drawItemIcon(ctx, id, (w || 120) / 2, (h || 70) / 2 + 4, (w || 120) / 150, t), true); }
+  function startWarmup(i) {
+    if (!footballOpen()) { act('football'); return; }
+    const f = S().football; if (i > 0 && !f.won[i - 1]) { toast('Gewinne zuerst im vorherigen Stadion!'); return; }
+    closeOverlay(); Finale.stop(); mode = 'menu'; screen = 'warmup'; ui.className = 'menu scr-warmup'; footIdx = i;
+    const W = WORLDS[i]; let k = 0, right = 0;
+    const draw = () => {
+      const t = MathGen.generate(W.id); let tries = 0;
+      ui.innerHTML = header('Aufwärmen: ' + STADIUMS[i], `Löse 3 Aufgaben – dann geht’s aufs Feld gegen ${W.bossName}!`) + `<div class="panel warmpanel"><div class="mp-head"><span class="tag">${esc(t.label)}</span><span class="progress">Aufgabe ${k + 1} von 3 · richtig: <b>${right}</b> · je +50 Coins</span></div><div class="task"></div><div class="fb" aria-live="polite"></div></div>`;
+      let sub; const api = renderTask(ui.querySelector('.task'), t, sub = (input, api) => {
+        const fb = ui.querySelector('.fb');
+        const go = () => { Sound.sfx('click'); k++; if (k < 3) draw(); else { const d = S(); d.football.tasks += 3; d.football.tasksRight += right; Save.save(); startLeagueMatch(i); } };
+        const label = k < 2 ? 'Nächste Aufgabe ▶' : '⚽ Aufs Spielfeld!';
+        if (MathGen.check(t, input)) {
+          if (tries === 0) { right++; S().coins += 50; S().football.points += 100; Save.save(); }
+          Sound.sfx('correct'); api.lock(true); fb.className = 'fb ok'; fb.innerHTML = `✔ Richtig!${tries === 0 ? ' <b>+50 Coins</b>' : ''} <button class="btn small gold" data-default id="nx">${label}</button>`; fb.querySelector('#nx').onclick = go;
+        } else {
+          tries++; Sound.sfx('wrong');
+          if (tries < 2) { fb.className = 'fb bad'; fb.innerHTML = `✘ Noch nicht. <span class="hint">${esc(t.hint)}</span>`; api.reset(); }
+          else { api.lock(true); fb.className = 'fb bad'; fb.innerHTML = `${esc(t.solution)} <button class="btn small" data-default id="nx">${label}</button>`; fb.querySelector('#nx').onclick = go; }
+        }
+      });
+      UI._cur = { task: t, solve: () => sub(answerOf(t), api) };
+    };
+    Sound.forWorld(W.id); draw();
+  }
+  function startLeagueMatch(i) {
+    const W = WORLDS[i]; footIdx = i;
+    closeOverlay(); mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
+    const kinds = W.enemies.filter(e => ['fish', 'jelly', 'puffer', 'crab', 'piranha', 'inkpus', 'lantern'].includes(e)).concat(['begleiter-ente', 'schildkroete', 'begleiter-krabbe', 'begleiter-seepferdchen']);
+    Finale.start((won, score) => leagueEnd(i, won, score), { boss: W.boss, name: W.bossName, win: 3, ai: 250 + i * 15, scale: BOSS_SCALE[W.boss], theme: W.theme, stadium: STADIUMS[i].toUpperCase(), taunts: FOOT_TAUNTS[W.boss], vip: false, kinds, track: W.id });
+    overlay(`<div class="panel"><h2>⚽ ${STADIUMS[i]}</h2><div id="vsrow" class="vsrow"></div><p>Heute gegen <b>${W.bossName}</b>! Wer zuerst <b>3 Tore</b> schießt, gewinnt.<br>Steuerung: Pfeiltasten / WASD oder mit dem Finger ziehen, Leertaste = Sprint.</p><div class="row"><button class="btn big gold" data-act="kickoff" data-default>Anpfiff! ▶</button></div></div>`);
+    $('#vsrow').appendChild(miniCanvas(420, 120, (ctx, t) => { Art.drawDolphin(ctx, { x: 100, y: 64, facing: 1, color: S().color, t, cos: Save.cosmetics(), scale: 1, speed: 0.4 }); ctx.font = 'bold 34px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#7a4a10'; ctx.fillText('VS', 210, 74); ctx.save(); ctx.translate(320, 66); ctx.scale(-1, 1); Art.drawBoss(ctx, W.boss, 0, 0, BOSS_SCALE[W.boss] * 0.9, { t }); ctx.restore(); }, true));
+  }
+  function leagueEnd(i, won, score) {
+    const d = S(), f = d.football, W = WORLDS[i]; const [g, a] = score.split(':').map(Number);
+    f.goals += g; f.against += a; f.points += g * 50;
+    let rewardHtml = '', rid = null;
+    if (won) {
+      const first = !f.won[i]; f.won[i] = true; f.scores[i] = score; f.points += 500; d.coins += 200;
+      rid = REWARDS[i]; if (rid && !d.owned.includes(rid)) d.owned.push(rid); else rid = null;
+      if (f.won.every(Boolean) && !f.date) f.date = new Date().toLocaleDateString('de-DE');
+      if (rid) { const it = Save.ITEMS.find(x => x.id === rid); rewardHtml = `<div class="rewardbox"><div id="rwcv"></div><div><b>Neues Item gewonnen:</b><br>${esc(it.name)}<br><button class="btn small gold" data-act="equip" data-arg="${rid}">Jetzt anlegen</button></div></div>`; Sound.sfx('unlock'); }
+    }
+    Save.save();
+    const all = f.won.every(Boolean);
+    overlay(`<div class="panel results"><h2>${won ? '🏆 Sieg gegen ' + W.bossName + '!' : W.bossName + ' gewinnt …'}</h2><div class="bignum">${score}</div>
+      <p>${won ? '+200 Muschel-Coins' + (all ? ' · <b>Alle 8 Stadien gewonnen!</b>' : '') : 'Knapp! Probier’s nochmal – mit 3 neuen Aufwärm-Aufgaben.'}</p>${rewardHtml}
+      <div class="row">${won ? (all ? '<button class="btn big gold" data-act="cert" data-arg="football" data-default>📜 Fußball-Urkunde</button>' : i < 7 ? `<button class="btn big gold" data-act="leaguego" data-arg="${i + 1}" data-default>Nächstes Stadion ▶</button>` : '') : `<button class="btn big gold" data-act="leaguego" data-arg="${i}" data-default>⟲ Revanche</button>`}<button class="btn" data-act="leaguequit">🏟 Zur Liga</button></div></div>`);
+    if (rid) $('#rwcv').appendChild(itemIcon(rid, 150, 90));
+    if (won) confetti();
   }
 
   /* ---------- Menü-Hintergrund ---------- */

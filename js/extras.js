@@ -13,6 +13,7 @@
     'trikot-rot':     { kind: 'jersey', base: '#e2121c', stripes: null, trim: '#ffffff', num: '#ffffff', numOut: '#7a0a10' },
     'trikot-blaurot': { kind: 'jersey', base: '#a50044', stripes: ['#1b3f94', 12, 12], trim: '#f6c700', num: '#f6c700', numOut: '#4a1028' },
     'trikot-schwarz': { kind: 'jersey', base: '#1c1c1f', stripes: null, trim: '#e1000f', trim2: '#ffffff', num: '#ffffff', numOut: '#e1000f' },
+    'trikot-winner':   { kind: 'jersey', base: '#ffcf2a', stripes: ['#ffe680', 4, 9], trim: '#ffffff', num: '#ffffff', numOut: '#9a6a00', shine: true, numText: '1' },
     'badeanzug-retro':  { kind: 'swim', base: '#ffffff', hstripes: '#e8323a' },
     'badeanzug-punkte': { kind: 'swim', base: '#ffd23a', dots: '#ffffff' }
   };
@@ -27,7 +28,7 @@
       const sh = c.createLinearGradient(0, -28, 0, 22); sh.addColorStop(0, 'rgba(0,0,0,0.18)'); sh.addColorStop(0.45, 'rgba(255,255,255,0.10)'); sh.addColorStop(1, 'rgba(0,0,0,0.22)'); c.fillStyle = sh; c.fillRect(-30, -40, 60, 72);
       c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-12, -20); c.quadraticCurveTo(-8, 0, -14, 18); c.moveTo(8, -22); c.quadraticCurveTo(4, -4, 10, 16); c.stroke();
       if (o.shine) { const g = c.createLinearGradient(-20, -30, 20, 20); g.addColorStop(0.35, 'rgba(255,240,190,0)'); g.addColorStop(0.5, `rgba(255,236,160,${0.35 + 0.25 * Math.sin(t * 3)})`); g.addColorStop(0.65, 'rgba(255,240,190,0)'); c.fillStyle = g; c.fillRect(-30, -40, 60, 72); }
-      c.font = 'bold 15px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = o.numOut; c.strokeText('10', -4, 3); c.fillStyle = o.num; c.fillText('10', -4, 3);
+      c.font = 'bold 15px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = o.numOut; c.strokeText(o.numText || '10', -4, 3); c.fillStyle = o.num; c.fillText(o.numText || '10', -4, 3);
       c.restore();
       // Kragen (vorn) und Saum (hinten)
       c.lineCap = 'round';
@@ -55,6 +56,18 @@
     c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-4, 16, -16, 22); c.quadraticCurveTo(-8, 8, -10, -2); c.closePath(); c.clip();
     c.fillStyle = o.stripes ? o.stripes[0] : o.base; c.fillRect(-20, -6, 30, 13);
     c.beginPath(); c.moveTo(-20, 7); c.lineTo(10, 7); c.lineWidth = 3; c.strokeStyle = o.trim; c.stroke();
+    c.restore();
+  }
+
+  /* ---------- Goldene Kette ---------- */
+  function neck(c, id, t) {
+    if (id !== 'goldkette') return;
+    c.save(); const pts = []; for (let i = 0; i <= 14; i++) { const k = i / 14; pts.push([12 + Math.sin(k * Math.PI) * 9, -26 + k * 44]); }
+    pts.forEach(([x, y], i) => { ell(c, x, y, 2.6, 1.9, i % 2 ? 0.6 : -0.6); fs(c, i % 2 ? '#ffd23a' : '#f0b400', 1, '#8a6200'); });
+    const sw = Math.sin(t * 2.2) * 0.12; c.translate(21, 4); c.rotate(sw);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 6); stroke(c, 1.6, '#8a6200');
+    ell(c, 0, 13, 7.5, 7.5); const g = c.createRadialGradient(-2, 10, 1, 0, 13, 8); g.addColorStop(0, '#fff6c0'); g.addColorStop(1, '#e8a800'); fs(c, g, 1.8, '#8a6200');
+    c.font = 'bold 9px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#8a5a00'; c.fillText('1', 0, 13.5);
     c.restore();
   }
 
@@ -99,6 +112,16 @@
 
   /* ---------- Witzige Begleiter ---------- */
   const BUDDIES = {
+    fussballfisch(c, t) {
+      c.save(); c.translate(-13, 0); c.rotate(Math.sin(t * 9) * 0.35); c.beginPath(); c.moveTo(2, 0); c.lineTo(-10, -9); c.lineTo(-7, 0); c.lineTo(-10, 9); c.closePath(); fs(c, '#1a1a22', 1.5, '#000'); c.restore();
+      c.beginPath(); c.moveTo(-2, -12); c.quadraticCurveTo(2, -20, 7, -12); fs(c, '#1a1a22', 1.2, '#000');
+      ell(c, 0, 0, 13, 13); c.fillStyle = '#fff'; c.fill(); c.save(); ell(c, 0, 0, 13, 13); c.clip(); c.rotate(t * 0.8);
+      const pent = (x, y, r) => { c.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 0.4; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } c.closePath(); c.fillStyle = '#1a1a22'; c.fill(); };
+      pent(0, 0, 4.5); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 0.4 + Math.PI / 5; pent(Math.cos(a) * 11, Math.sin(a) * 11, 4); }
+      c.restore(); ell(c, 0, 0, 13, 13); stroke(c, 1.8, '#2a2a3a');
+      ell(c, 5, -4, 3.6, 3.8); fs(c, '#fff', 1.2, '#2a2a3a'); ell(c, 6, -3.6, 1.8, 2.2); c.fillStyle = '#111'; c.fill();
+      c.beginPath(); c.arc(7, 3, 3, 0.2, Math.PI - 0.4); stroke(c, 1.5, '#2a2a3a'); ell(c, 2, 4, 2.4, 1.6); c.fillStyle = 'rgba(255,120,150,0.55)'; c.fill();
+    },
     seepferdchen(c, t) { const g = c.createLinearGradient(-10, -30, 10, 20); g.addColorStop(0, '#ffe04a'); g.addColorStop(1, '#ff9a2a');
       c.beginPath(); c.moveTo(4, -26); c.quadraticCurveTo(14, -30, 18, -22); c.lineTo(26, -20); c.lineTo(26, -15); c.lineTo(16, -15); c.quadraticCurveTo(10, -10, 10, 0); c.quadraticCurveTo(10, 14, 2, 18); c.quadraticCurveTo(-8, 22, -6, 30); c.quadraticCurveTo(-2, 36, 4, 32); c.quadraticCurveTo(0, 30, 0, 27); c.quadraticCurveTo(8, 24, 2, 26); c.quadraticCurveTo(-10, 22, -6, 10); c.quadraticCurveTo(-10, -6, -2, -16); c.quadraticCurveTo(-4, -24, 4, -26); fs(c, g, 2, '#a85a00');
       c.save(); c.translate(-8, 0); c.rotate(Math.sin(t * 12) * 0.3); c.beginPath(); c.moveTo(0, -6); c.quadraticCurveTo(-10, 0, 0, 6); fs(c, 'rgba(255,240,200,0.9)', 1.2, '#a85a00'); c.restore();
@@ -156,7 +179,11 @@
     { id: 'begleiter-ente', name: 'Quietsche-Ente', hint: 'Hat sich irgendwie ins Meer verirrt', slot: 'companion', price: 1200, cat: 'Begleiter' },
     { id: 'begleiter-krabbe', name: 'Coole Krabbe', hint: 'Sonnenbrille, winkt mit der Schere', slot: 'companion', price: 1300, cat: 'Begleiter' },
     { id: 'begleiter-kugelfisch', name: 'Pump-Kugelfisch', hint: 'Bläst sich alle paar Sekunden auf', slot: 'companion', price: 1500, cat: 'Begleiter' },
+    { id: 'trikot-winner', name: 'Winner-Trikot', hint: 'Goldenes Siegertrikot – Belohnung im Fußball-Modus', slot: 'body', price: 0, cat: 'Trikots', reward: true },
+    { id: 'goldbrille', name: 'Goldene Brille', hint: 'Belohnung im Fußball-Modus', slot: 'eyes', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'goldkette', name: 'Goldene Kette', hint: 'Belohnung im Fußball-Modus', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'begleiter-fussballfisch', name: 'Fußball-Fisch', hint: 'Begleiter – Belohnung im Fußball-Modus', slot: 'companion', price: 0, cat: 'Begleiter', reward: true },
     { id: 'begleiter-babyhai', name: 'Baby-Hai', hint: 'Mit rosa Schnuller', slot: 'companion', price: 1600, cat: 'Begleiter' }
   ];
-  root.ArtExtras = { outfit, sleeve, wig, drawBuddy, ITEMS, OUTFITS };
+  root.ArtExtras = { neck, outfit, sleeve, wig, drawBuddy, ITEMS, OUTFITS };
 })(window);

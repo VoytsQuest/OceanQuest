@@ -35,6 +35,15 @@ Delfin auswählen, dann 15 Fragen von leicht (Welt 1) bis schwer (Welt 7) mit je
 Gewinnleiter 20 → 5.000 Muschel-Coins, Sicherheitsstufen bei Frage 5 (150) und 10 (800),
 Joker: 50:50, Publikum und Anruf bei Professor Willy. Aussteigen ist jederzeit möglich. Showmaster ist Otto.
 
+## Fußball-Modus
+Öffnet sich, wenn das Spiel durchgespielt (Finale gewonnen) und im Mathe-Contest mindestens Frage 5 erreicht ist.
+Liga durch die 8 Stadien der Bosse (Willy bis Mbappé), wer zuerst 3 Tore schießt, gewinnt. Vor jedem Spiel 3 Aufwärm-Aufgaben
+(+50 Coins pro richtiger Antwort). Belohnungen: Goldene Brille (Stadion 2), Goldene Kette (4), Fußball-Fisch (6), Winner-Trikot (8).
+
+## Urkunden
+Drei druckbare Urkunden (auch als PDF): Spiel durchgespielt (mit richtigen/falschen Antworten, Muscheln und weggestoßenen Gegnern),
+Mathe-Contest und Fußball-Modus.
+
 ## Musik
 `assets/music/` enthält die 5 eigenen Tracks (Whale Call at Dawn I/II, Deep Currents, Deep Reflections I/II).
 Jede Welt startet mit eigener Stimmung, nach Trackende geht es automatisch weiter. Musik startet erst nach der
