@@ -28,8 +28,8 @@
     togglePause() {
       if (mode === 'finale') {
         if (Finale.paused) { Finale.paused = false; closeOverlay(); return; }
-        Finale.paused = true; const lg = footIdx !== null;
-        overlay(`<div class="panel pause"><h2>Pause</h2><button class="btn big" data-act="resume">▶ Weiter</button><button class="btn" data-act="${lg ? 'leaguematch' : 'final'}" data-arg="${lg ? footIdx : ''}">⟲ Spiel neu starten</button><button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button><button class="btn" data-act="${lg ? 'leaguequit' : 'quit'}">⌂ ${lg ? 'Zur Liga' : 'Zur Weltkarte'}</button></div>`); return;
+        Finale.paused = true; const lg = footIdx !== null, du = duelOn;
+        overlay(`<div class="panel pause"><h2>Pause</h2><button class="btn big" data-act="resume">▶ Weiter</button><button class="btn" data-act="${du ? 'duelgo' : lg ? 'leaguematch' : 'final'}" data-arg="${lg ? footIdx : ''}">⟲ Spiel neu starten</button><button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button><button class="btn" data-act="${du ? 'duelquit' : lg ? 'leaguequit' : 'quit'}">⌂ ${du ? 'Zur Figurenwahl' : lg ? 'Zur Liga' : 'Zur Weltkarte'}</button></div>`); return;
       }
       if (mode !== 'game') return;
       const L = Game.L; if (!L) return;
@@ -134,6 +134,11 @@
       case 'cert': show('cert', { kind: arg || 'game' }); break;
       case 'football': if (footballOpen()) show('league'); else overlay(`<div class="panel"><h2>⚽ Fußball-Modus</h2><p>Der Fußball-Modus öffnet sich, wenn du beides geschafft hast:</p><ul class="checks req"><li class="${S().exam.passed ? 'ok' : 'no'}">Das Spiel durchgespielt (Finale gegen Mbappé gewonnen)</li><li class="${S().contest.best >= 5 ? 'ok' : 'no'}">Im Mathe-Contest mindestens die erste Sicherheitsstufe (Frage 5) erreicht</li></ul><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
       case 'leaguego': startWarmup(+arg); break;
+      case 'duel': if (duelOpen()) show('duelpick'); else overlay(`<div class="panel"><h2>🤝 Fußball-Duell</h2><p>Das Duell für zwei Spieler öffnet sich, wenn du im <b>Fußball-Modus alle 8 Stadien</b> gewonnen hast.</p><p>Bisher: <b>${S().football.won.filter(Boolean).length} von 8</b></p><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
+      case 'duelfig': { const [pl, i] = arg.split(':'); DUEL[pl] = +i; ui.querySelectorAll(`.figtile[data-pl="${pl}"]`).forEach(b => b.classList.toggle('sel', +b.dataset.i === +i)); Sound.sfx('switch'); updateDuelBar(); break; }
+      case 'duelwin': DUEL.win = +arg; ui.querySelectorAll('.winbtn').forEach(b => b.classList.toggle('sel', +b.dataset.arg === DUEL.win)); break;
+      case 'duelgo': Finale.paused = false; startDuel(); break;
+      case 'duelquit': Finale.paused = false; Finale.stop(); closeOverlay(); duelOn = false; Sound.forWorld(0); show('duelpick'); break;
       case 'leaguematch': Finale.paused = false; closeOverlay(); startLeagueMatch(+arg); break;
       case 'leaguequit': Finale.paused = false; Finale.stop(); closeOverlay(); footIdx = null; Sound.forWorld(0); show('league'); break;
       case 'equip': { const it = Save.ITEMS.find(i => i.id === arg); if (it && S().owned.includes(arg)) { S().equipped[it.slot] = arg; Save.save(); Sound.sfx('buy'); toast(it.name + ' angelegt!'); if (el) { el.disabled = true; el.textContent = '✔ Angelegt'; } } break; }
@@ -167,6 +172,7 @@
         <button class="btn" data-act="goto" data-arg="slots">💾 Spielstände</button>
         <button class="btn contestbtn" data-act="contest">🎤 Mathe-Contest</button>
         <button class="btn footbtn ${has && footballOpen() ? '' : 'lockedbtn'}" data-act="football">⚽ Fußball-Modus${has && footballOpen() ? '' : ' 🔒'}</button>
+        <button class="btn footbtn ${has && duelOpen() ? '' : 'lockedbtn'}" data-act="duel">🤝 Fußball-Duell${has && duelOpen() ? '' : ' 🔒'}</button>
         <button class="btn" data-act="goto" data-arg="create">🐬 Mein Delfin</button>
         <button class="btn" data-act="goto" data-arg="shop">🐚 Delfin-Shop</button>
         <button class="btn" data-act="${has ? 'goto' : 'continue'}" data-arg="worlds">🗺 Welten</button>
@@ -277,6 +283,14 @@
         <div class="rewardbar"><b>Belohnungen:</b>${Object.entries(REWARDS).map(([i, id]) => { const it = Save.ITEMS.find(x => x.id === id); const own = d.owned.includes(id); return `<span class="rw ${own ? 'own' : ''}"><span class="rwico" data-ico="${id}"></span>${esc(it.name)}<small>${own ? '✔ gewonnen' : 'Stadion ' + (+i + 1)}</small></span>`; }).join('')}${f.won.every(Boolean) ? '<button class="btn gold small" data-act="cert" data-arg="football">📜 Urkunde</button>' : ''}</div>`;
       ui.querySelectorAll('.st-cv').forEach(el => el.appendChild(bossCanvas(el.dataset.boss, 200, 110, 0.36, el.dataset.grey === '1')));
       ui.querySelectorAll('.rwico').forEach(el => el.appendChild(itemIcon(el.dataset.ico, 90, 54)));
+    },
+    duelpick() {
+      const figs = duelFigs(); DUEL.p1 = Math.min(DUEL.p1, figs.length - 1); DUEL.p2 = Math.min(DUEL.p2 === null ? figs.length - 1 : DUEL.p2, figs.length - 1);
+      const panel = (pl, title, keys) => `<div class="duelside ${pl}"><div class="ds-head"><b>${title}</b><span>${keys}</span></div><div class="figgrid">${figs.map((f, i) => `<button class="figtile ${DUEL[pl] === i ? 'sel' : ''}" data-act="duelfig" data-arg="${pl}:${i}" data-pl="${pl}" data-i="${i}"><div class="fig-cv" data-i="${i}"></div><span>${esc(f.name)}</span></button>`).join('')}</div></div>`;
+      ui.innerHTML = header('Fußball-Duell', 'Zwei Spieler an einem Gerät – wählt eure Figuren!') + `<div class="duelwrap">${panel('p1', 'Spieler 1 · links', '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd class="wide2">Leertaste</kbd>')}${panel('p2', 'Spieler 2 · rechts', '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> + <kbd class="wide2">Enter</kbd>')}</div>
+        <div class="duelbar"><span id="duelvs"></span><span class="winsel">Bis ${[3, 5, 7].map(n => `<button class="btn small winbtn ${DUEL.win === n ? 'sel' : ''}" data-act="duelwin" data-arg="${n}">${n}</button>`).join('')} Tore</span><button class="btn big gold" data-act="duelgo" data-default>⚽ Anpfiff!</button></div>`;
+      ui.querySelectorAll('.fig-cv').forEach(el => { const f = figs[+el.dataset.i]; el.appendChild(miniCanvas(110, 64, (ctx, t) => { if (f.kind === 'dolphin') Art.drawDolphin(ctx, { x: 55, y: 34, facing: 1, color: f.color, t, cos: f.cos, scale: 0.75, speed: 0.3 }); else Art.drawBoss(ctx, f.id, 55, 36, f.scale * 0.75, { t }); }, true)); });
+      updateDuelBar();
     },
     contestpick() {
       ui.innerHTML = header('Mathe-Contest', 'Wähle deinen Delfin – die gewonnenen Muschel-Coins landen auf seinem Konto') + `<div class="slotgrid">${[0, 1, 2].map(i => { const d = Save.slots[i];
@@ -415,7 +429,7 @@
 
   /* ---------- Großes Finale: Fußball gegen Mbappé ---------- */
   function startFinal() {
-    footIdx = null; const d = S(); if (!d.exam.unlocked) { toast('Besiege zuerst alle 8 Bosse!'); return; }
+    footIdx = null; duelOn = false; const d = S(); if (!d.exam.unlocked) { toast('Besiege zuerst alle 8 Bosse!'); return; }
     closeOverlay(); mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
     Finale.start((won, score) => {
       if (won) { d.exam.passed = true; d.exam.score = score; d.exam.date = new Date().toLocaleDateString('de-DE'); d.coins += 1000; Save.save(); }
@@ -692,7 +706,7 @@
     Sound.forWorld(W.id); draw();
   }
   function startLeagueMatch(i) {
-    const W = WORLDS[i]; footIdx = i;
+    const W = WORLDS[i]; footIdx = i; duelOn = false;
     closeOverlay(); mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
     const kinds = W.enemies.filter(e => ['fish', 'jelly', 'puffer', 'crab', 'piranha', 'inkpus', 'lantern'].includes(e)).concat(['begleiter-ente', 'schildkroete', 'begleiter-krabbe', 'begleiter-seepferdchen']);
     Finale.start((won, score) => leagueEnd(i, won, score), { boss: W.boss, name: W.bossName, win: 3, ai: 250 + i * 15, scale: BOSS_SCALE[W.boss], theme: W.theme, stadium: STADIUMS[i].toUpperCase(), taunts: FOOT_TAUNTS[W.boss], vip: false, kinds, track: W.id });
@@ -716,6 +730,32 @@
       <div class="row">${won ? (all ? '<button class="btn big gold" data-act="cert" data-arg="football" data-default>📜 Fußball-Urkunde</button>' : i < 7 ? `<button class="btn big gold" data-act="leaguego" data-arg="${i + 1}" data-default>Nächstes Stadion ▶</button>` : '') : `<button class="btn big gold" data-act="leaguego" data-arg="${i}" data-default>⟲ Revanche</button>`}<button class="btn" data-act="leaguequit">🏟 Zur Liga</button></div></div>`);
     if (rid) $('#rwcv').appendChild(itemIcon(rid, 150, 90));
     if (won) confetti();
+  }
+
+  /* ---------- Fußball-Duell: 2 Spieler an einem Gerät ---------- */
+  let duelOn = false; const DUEL = { p1: 0, p2: null, win: 5 };
+  function duelOpen() { const d = S(); return d.created && d.football.won.every(Boolean); }
+  function duelFigs() {
+    const list = [];
+    Save.slots.forEach(d => { if (d) list.push({ kind: 'dolphin', name: d.name, color: d.color, cos: Object.assign({}, d.equipped, { companion: null }) }); });
+    WORLDS.forEach(W => list.push({ kind: 'boss', id: W.boss, name: W.bossName, scale: BOSS_SCALE[W.boss] }));
+    return list;
+  }
+  function updateDuelBar() { const figs = duelFigs(), el = $('#duelvs'); if (el) el.innerHTML = `<b class="c1">${esc(figs[DUEL.p1].name)}</b> gegen <b class="c2">${esc(figs[DUEL.p2].name)}</b>`; }
+  function startDuel() {
+    if (!duelOpen()) { act('duel'); return; }
+    const figs = duelFigs(); const p1 = figs[DUEL.p1], p2 = figs[DUEL.p2 === null ? figs.length - 1 : DUEL.p2];
+    const n1 = p1.name, n2 = p2.name === p1.name ? p2.name + ' 2' : p2.name;
+    closeOverlay(); footIdx = null; duelOn = true; mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
+    Finale.start((won, score) => {
+      const winner = won ? n1 : n2; const [a, b] = score.split(':');
+      overlay(`<div class="panel results"><h2>🏆 ${esc(winner)} gewinnt!</h2><div class="bignum">${a}:${b}</div><p><b>${esc(n1)}</b> gegen <b>${esc(n2)}</b></p>
+        <div class="row"><button class="btn big gold" data-act="duelgo" data-default>⟲ Revanche</button><button class="btn" data-act="duelquit">🔄 Figuren wechseln</button><button class="btn" data-act="contestquit">🏠 Menü</button></div></div>`);
+      confetti();
+    }, { duel: { p1: Object.assign({}, p1, { name: n1 }), p2: Object.assign({}, p2, { name: n2 }) }, name: n2, win: DUEL.win, stadium: 'OCEANQUEST DUELL · VOYTSQUEST', vip: false, taunts: { ai: [n2 + ' trifft!'], player: [n1 + ' trifft!'], win: n1 + ' gewinnt das Duell!', lose: n2 + ' gewinnt das Duell!' }, track: 9 });
+    overlay(`<div class="panel"><h2>🤝 Fußball-Duell</h2><p><b class="c1">${esc(n1)}</b> gegen <b class="c2">${esc(n2)}</b> · wer zuerst <b>${DUEL.win} Tore</b> schießt, gewinnt.</p>
+      <table class="keys"><tr><td><b class="c1">Spieler 1 (links)</b></td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> schwimmen · <kbd class="wide2">Leertaste</kbd> Sprint</td></tr><tr><td><b class="c2">Spieler 2 (rechts)</b></td><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> schwimmen · <kbd class="wide2">Enter</kbd> Sprint</td></tr><tr><td>👆 iPad</td><td>Jeder zieht mit dem Finger auf seiner Hälfte</td></tr></table>
+      <div class="row"><button class="btn big gold" data-act="kickoff" data-default>Anpfiff! ▶</button></div></div>`);
   }
 
   /* ---------- Menü-Hintergrund ---------- */

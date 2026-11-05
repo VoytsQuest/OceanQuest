@@ -40,6 +40,12 @@ Joker: 50:50, Publikum und Anruf bei Professor Willy. Aussteigen ist jederzeit m
 Liga durch die 8 Stadien der Bosse (Willy bis Mbappé), wer zuerst 3 Tore schießt, gewinnt. Vor jedem Spiel 3 Aufwärm-Aufgaben
 (+50 Coins pro richtiger Antwort). Belohnungen: Goldene Brille (Stadion 2), Goldene Kette (4), Fußball-Fisch (6), Winner-Trikot (8).
 
+## Fußball-Duell (2 Spieler, 1 Gerät)
+Öffnet sich, wenn alle 8 Stadien im Fußball-Modus gewonnen sind. Jeder wählt eine Figur (eigene Delfine aus den
+Spielständen oder einen der 8 Bosse) und die Torzahl (3, 5 oder 7).
+Spieler 1 (links): W A S D + Leertaste (Sprint) · Spieler 2 (rechts): Pfeiltasten + Enter (Sprint).
+Auf dem iPad zieht jeder mit dem Finger auf seiner Spielfeldhälfte – beide gleichzeitig.
+
 ## Urkunden
 Drei druckbare Urkunden (auch als PDF): Spiel durchgespielt (mit richtigen/falschen Antworten, Muscheln und weggestoßenen Gegnern),
 Mathe-Contest und Fußball-Modus.

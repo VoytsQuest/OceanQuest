@@ -33,9 +33,9 @@
   window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
   // Finale: Maus/Finger auf dem Spielfeld
   const toLogical = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * 1280 / r.width, (e.clientY - r.top) * 720 / r.height]; };
-  cv.addEventListener('pointerdown', e => { if (UI.mode !== 'finale') return; try { cv.setPointerCapture(e.pointerId); } catch (_) {} Finale.pointer('down', ...toLogical(e)); });
-  cv.addEventListener('pointermove', e => { if (UI.mode === 'finale' && e.buttons) Finale.pointer('move', ...toLogical(e)); });
-  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => Finale.pointer('up')));
+  cv.addEventListener('pointerdown', e => { if (UI.mode !== 'finale') return; try { cv.setPointerCapture(e.pointerId); } catch (_) {} Finale.pointer('down', ...toLogical(e), e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (UI.mode === 'finale' && (e.buttons || e.pointerType === 'touch')) Finale.pointer('move', ...toLogical(e), e.pointerId); });
+  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, e => Finale.pointer('up', 0, 0, e.pointerId)));
 
   const start = () => {
     UI.init();

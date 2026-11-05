@@ -13,6 +13,11 @@
   };
   const KINDS = ['begleiter-ente', 'begleiter-krabbe', 'begleiter-krake', 'begleiter-kugelfisch', 'begleiter-seepferdchen', 'begleiter-babyhai', 'schildkroete', 'fish', 'jelly', 'puffer'];
   let S = null;
+  const keys = new Set(), edges = new Set();
+  window.addEventListener('keydown', e => { if (!Finale.active) return; if (!e.repeat) edges.add(e.code); keys.add(e.code); if (S && S.duel && ['Enter', 'Space', 'ShiftRight'].includes(e.code)) e.preventDefault(); });
+  window.addEventListener('keyup', e => keys.delete(e.code));
+  window.addEventListener('blur', () => keys.clear());
+  const axis = (l, r, u, d) => { let ix = (keys.has(r) ? 1 : 0) - (keys.has(l) ? 1 : 0), iy = (keys.has(d) ? 1 : 0) - (keys.has(u) ? 1 : 0); const n = Math.hypot(ix, iy); return n ? [ix / n, iy / n] : [0, 0]; };
 
   const ENEMY_T = ['fish', 'jelly', 'puffer', 'crab', 'piranha', 'inkpus', 'lantern'];
   function spectators(O) {
@@ -28,10 +33,11 @@
     active: false, paused: false, onEnd: null,
     start(onEnd, opts) {
       this.onEnd = onEnd; this.active = true; this.paused = false;
-      const O = Object.assign({ boss: 'mbappe', name: 'Mbappé', win: 5, ai: 330, scale: 0.3, theme: null, stadium: 'OCEANQUEST CUP · VOYTSQUEST', taunts: TAUNTS, vip: true, kinds: KINDS, track: 9 }, opts || {});
-      S = { o: O, t: 0, state: 'intro', st: 0, ps: 0, as: 0, ball: { x: MID, y: MIDY, vx: 0, vy: 0, rot: 0 }, p: { x: F.x + 170, y: MIDY, vx: 0, vy: 0 }, a: { x: F.x + F.w - 170, y: MIDY, vx: 0, vy: 0, tx: F.x + F.w - 170, ty: MIDY, think: 0 },
+      const O = Object.assign({ duel: null, boss: 'mbappe', name: 'Mbappé', win: 5, ai: 330, scale: 0.3, theme: null, stadium: 'OCEANQUEST CUP · VOYTSQUEST', taunts: TAUNTS, vip: true, kinds: KINDS, track: 9 }, opts || {});
+      const figR = f => f && f.kind === 'boss' ? 46 : RP;
+      S = { o: O, duel: O.duel, rp: O.duel ? figR(O.duel.p1) : RP, ra: O.duel ? figR(O.duel.p2) : RA, pointers: {}, t: 0, state: 'intro', st: 0, ps: 0, as: 0, ball: { x: MID, y: MIDY, vx: 0, vy: 0, rot: 0 }, p: { x: F.x + 170, y: MIDY, vx: 0, vy: 0, sprint: 0, sprintCd: 0 }, a: { x: F.x + F.w - 170, y: MIDY, vx: 0, vy: 0, sprint: 0, sprintCd: 0, tx: F.x + F.w - 170, ty: MIDY, think: 0 },
         spec: spectators(O), cheer: 0, sad: 0, msg: '', msgT: 0, banner: '', bannerT: 0, sprint: 0, sprintCd: 0, pointer: null, parts: [], lastHit: 0, stillT: 0 };
-      Sound.forWorld(O.track);
+      Sound.forWorld(O.track); keys.clear(); edges.clear();
     },
     kickoff() { S.state = 'count'; S.st = 0; },
     stop() { this.active = false; S = null; },
@@ -41,16 +47,16 @@
       if (S.state === 'count' && S.st > 2.4) { S.state = 'play'; S.st = 0; whistle(); }
       if (S.state === 'goal' && S.st > 2.0) { resetPositions(); if (S.ps >= S.o.win || S.as >= S.o.win) { S.state = 'end'; S.st = 0; const won = S.ps >= S.o.win; say(won ? S.o.taunts.win : S.o.taunts.lose, 6); Sound.sfx(won ? 'certificate' : 'wrong'); if (won) S.cheer = 6; setTimeout(() => this.onEnd && this.onEnd(won, S.ps + ':' + S.as), 2200); } else { S.state = 'count'; S.st = 0.9; } }
       const n = 4, h = dt / n;
-      for (let i = 0; i < n; i++) step(h, ev && i === 0 ? ev : null);
+      for (let i = 0; i < n; i++) step(h, ev && i === 0 ? ev : null, i === 0);
       for (let i = S.parts.length - 1; i >= 0; i--) { const p = S.parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 0) * dt; if (p.life <= 0) S.parts.splice(i, 1); }
       if (S.parts.length > 240) S.parts.splice(0, S.parts.length - 240);
     },
     render(ctx) { if (S) render(ctx); },
-    pointer(type, x, y) {
-      if (!S) return;
-      if (type === 'up') { S.pointer = null; return; }
-      if (type === 'down' && (x > MID || y < F.y - 30)) return;
-      if (type === 'down' || S.pointer) S.pointer = { x, y };
+    pointer(type, x, y, id) {
+      if (!S) return; id = id === undefined ? 0 : id;
+      if (type === 'up') { delete S.pointers[id]; return; }
+      if (type === 'down') { if (y < F.y - 30) return; const side = x < MID ? 'p' : 'a'; if (side === 'a' && !S.duel) return; S.pointers[id] = { side, x, y }; return; }
+      const pt = S.pointers[id]; if (pt) { pt.x = x; pt.y = y; }
     }
   };
 
@@ -86,38 +92,45 @@
   }
   function bubble(x, y) { const a = Math.random() * 6.28, s = 30 + Math.random() * 90; S.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, life: 0.8, type: 'b', r: 2 + Math.random() * 4 }); }
 
-  function step(dt, ev) {
+  function step(dt, ev, first) {
     const play = S.state === 'play'; const P = S.p, A = S.a, b = S.ball;
-    // Spieler
-    S.sprint -= dt; S.sprintCd -= dt;
-    if (ev && ev.action && S.sprintCd <= 0 && play) { S.sprint = 0.45; S.sprintCd = 1.4; Sound.sfx('slap'); }
-    const boost = S.sprint > 0 ? 1.55 : 1;
-    let dx = 0, dy = 0, maxV = 560 * boost;
-    if (S.pointer) { dx = (S.pointer.x - P.x) * 12; dy = (S.pointer.y - P.y) * 12; maxV = 700; }
-    else { let ix = (Input.right ? 1 : 0) - (Input.left ? 1 : 0), iy = (Input.down ? 1 : 0) - (Input.up ? 1 : 0); const l = Math.hypot(ix, iy); if (l) { ix /= l; iy /= l; } dx = ix * maxV; dy = iy * maxV; }
-    if (!play && S.state !== 'count') { dx = dy = 0; }
-    moveMallet(P, dx, dy, maxV, dt, F.x + RP - 6, MID - RP, RP);
-    // KI: Mbappé
-    A.think -= dt;
-    if (A.think <= 0) {
-      A.think = 0.18 + Math.random() * 0.14; const goalX = F.x, goalY = MIDY;
-      if (b.x > MID - 20) {
-        let gx = b.x - goalX, gy = b.y - goalY; const gl = Math.hypot(gx, gy) || 1; gx /= gl; gy /= gl;
-        const bx = b.x + gx * (RB + RA + 14), by = b.y + gy * (RB + RA + 14);
-        const feasible = bx < F.x + F.w - RA && by > F.y + RA && by < F.y + F.h - RA;
-        if (!feasible) { A.tx = b.x; A.ty = b.y; }
-        else if (A.x > b.x + 8 && Math.hypot(A.x - bx, A.y - by) < 70) { A.tx = b.x - gx * 30; A.ty = b.y - gy * 30; }
-        else { A.tx = bx; A.ty = by; }
-      } else { A.tx = F.x + F.w - 150 - Math.random() * 60; A.ty = MIDY + (b.y - MIDY) * 0.55; }
-      A.tx += (Math.random() - 0.5) * 24; A.ty += (Math.random() - 0.5) * 24;
+    const human = (M, side, dir, sprintPressed, r, minX, maxX) => {
+      M.sprint -= dt; M.sprintCd -= dt;
+      if (sprintPressed && M.sprintCd <= 0 && play) { M.sprint = 0.45; M.sprintCd = 1.4; Sound.sfx('slap'); }
+      const boost = M.sprint > 0 ? 1.55 : 1; let maxV = 560 * boost, dx = dir[0] * maxV, dy = dir[1] * maxV;
+      const pt = Object.values(S.pointers).find(q => q.side === side); if (pt) { dx = (pt.x - M.x) * 12; dy = (pt.y - M.y) * 12; maxV = 700; }
+      if (!play && S.state !== 'count') { dx = dy = 0; }
+      moveMallet(M, dx, dy, maxV, dt, minX, maxX, r);
+    };
+    if (S.duel) {
+      human(P, 'p', axis('KeyA', 'KeyD', 'KeyW', 'KeyS'), first && edges.has('Space'), S.rp, F.x + S.rp - 6, MID - S.rp);
+      human(A, 'a', axis('ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'), first && (edges.has('Enter') || edges.has('ShiftRight') || edges.has('Numpad0')), S.ra, MID + S.ra, F.x + F.w - S.ra + 6);
+      if (first) edges.clear();
+    } else {
+      const ix = (Input.right ? 1 : 0) - (Input.left ? 1 : 0), iy = (Input.down ? 1 : 0) - (Input.up ? 1 : 0), n = Math.hypot(ix, iy);
+      human(P, 'p', n ? [ix / n, iy / n] : [0, 0], ev && ev.action, S.rp, F.x + S.rp - 6, MID - S.rp);
+      // KI-Gegner
+      A.think -= dt;
+      if (A.think <= 0) {
+        A.think = 0.18 + Math.random() * 0.14; const goalX = F.x, goalY = MIDY;
+        if (b.x > MID - 20) {
+          let gx = b.x - goalX, gy = b.y - goalY; const gl = Math.hypot(gx, gy) || 1; gx /= gl; gy /= gl;
+          const bx = b.x + gx * (RB + RA + 14), by = b.y + gy * (RB + RA + 14);
+          const feasible = bx < F.x + F.w - RA && by > F.y + RA && by < F.y + F.h - RA;
+          if (!feasible) { A.tx = b.x; A.ty = b.y; }
+          else if (A.x > b.x + 8 && Math.hypot(A.x - bx, A.y - by) < 70) { A.tx = b.x - gx * 30; A.ty = b.y - gy * 30; }
+          else { A.tx = bx; A.ty = by; }
+        } else { A.tx = F.x + F.w - 150 - Math.random() * 60; A.ty = MIDY + (b.y - MIDY) * 0.55; }
+        A.tx += (Math.random() - 0.5) * 24; A.ty += (Math.random() - 0.5) * 24;
+      }
+      const aiMax = (S.o.ai + (S.ps - S.as) * 18) * (play ? 1 : 0.6);
+      moveMallet(A, play ? (A.tx - A.x) * 7 : 0, play ? (A.ty - A.y) * 7 : 0, aiMax, dt, MID + RA, F.x + F.w - RA + 6, RA);
     }
-    const aiMax = (S.o.ai + (S.ps - S.as) * 18) * (play ? 1 : 0.6);
-    moveMallet(A, play ? (A.tx - A.x) * 7 : 0, play ? (A.ty - A.y) * 7 : 0, aiMax, dt, MID + RA, F.x + F.w - RA + 6, RA);
     if (!play) { b.vx *= 0.9; b.vy *= 0.9; return; }
     // Ball
     b.x += b.vx * dt; b.y += b.vy * dt; const fr = Math.exp(-0.14 * dt); b.vx *= fr; b.vy *= fr; b.rot += (b.vx / RB) * dt;
     walls(b);
-    collide(P, RP); collide(A, RA);
+    collide(P, S.rp); collide(A, S.ra);
     walls(b);
     // Ball liegt fest? Sanft anstupsen
     if (Math.hypot(b.vx, b.vy) < 12) { S.stillT += dt; if (S.stillT > 3) { b.vx = (b.x > MID ? -1 : 1) * 160; b.vy = (Math.random() - 0.5) * 120; S.stillT = 0; } } else S.stillT = 0;
@@ -138,6 +151,7 @@
   }
   function goal(who) {
     S.state = 'goal'; S.st = 0; S.lastGoal = who;
+    if (S.duel) { if (who === 'player') S.ps++; else S.as++; S.cheer = 2.4; Sound.sfx('bossDefeat'); S.banner = 'Tor für ' + (who === 'player' ? S.duel.p1.name : S.duel.p2.name) + '!'; S.bannerT = 1.9; for (let i = 0; i < 50; i++) S.parts.push({ x: who === 'player' ? F.x + F.w + 20 : F.x - 20, y: MIDY, vx: (Math.random() - 0.5) * 500, vy: (Math.random() - 0.5) * 500, life: 1.4, type: 'c', g: 300, col: ['#ffd23a', '#ff5a8a', '#5ad1ff', '#7aff9a'][i % 4] }); return; }
     if (who === 'player') { S.ps++; S.cheer = 2.4; Sound.sfx('bossDefeat'); S.banner = 'TOOOR!'; say(S.o.taunts.player[(S.ps - 1) % S.o.taunts.player.length]); for (let i = 0; i < 60; i++) S.parts.push({ x: F.x + F.w + 20, y: MIDY, vx: (Math.random() - 0.8) * 500, vy: (Math.random() - 0.5) * 500, life: 1.4, type: 'c', g: 300, col: ['#ffd23a', '#ff5a8a', '#5ad1ff', '#7aff9a'][i % 4] }); }
     else { S.as++; S.sad = 2; Sound.sfx('wrong'); S.banner = 'Tor für ' + S.o.name; say(S.o.taunts.ai[(S.as - 1) % S.o.taunts.ai.length]); }
     S.bannerT = 1.9;
@@ -185,19 +199,22 @@
     for (let x = 0; x < VW; x += 30) { ctx.fillStyle = '#3aa84a'; ctx.beginPath(); ctx.moveTo(x, VH); ctx.quadraticCurveTo(x + 8 + Math.sin(t * 2 + x) * 4, VH - 18, x + 4, VH - 28); ctx.lineTo(x + 8, VH); ctx.fill(); }
     // Ball-Schatten, Figuren
     const P = S.p, A = S.a, b = S.ball;
-    ctx.fillStyle = 'rgba(0,30,20,0.3)'; Art.ell(ctx, b.x + 6, b.y + 10, RB, RB * 0.55); ctx.fill(); Art.ell(ctx, P.x + 6, P.y + 26, 40, 12); ctx.fill(); Art.ell(ctx, A.x - 6, A.y + 34, 52, 14); ctx.fill();
+    ctx.fillStyle = 'rgba(0,30,20,0.3)'; Art.ell(ctx, b.x + 6, b.y + 10, RB, RB * 0.55); ctx.fill(); Art.ell(ctx, P.x + 6, P.y + 28, S.rp, 12); ctx.fill(); Art.ell(ctx, A.x - 6, A.y + 32, S.ra, 14); ctx.fill();
     const d = Save.data; const cos = Save.cosmetics();
-    if (cos.companion) Art.drawCompanion(ctx, cos.companion, F.x + 26, F.y + F.h - 26, t, 1);
+    if (cos.companion && !S.duel) Art.drawCompanion(ctx, cos.companion, F.x + 26, F.y + F.h - 26, t, 1);
     const sp = Math.min(1, Math.hypot(P.vx, P.vy) / 560);
-    Art.drawDolphin(ctx, { x: P.x, y: P.y, facing: 1, angle: clamp(P.vy / 900, -0.4, 0.4), color: d.color, t, cos, scale: 0.78, speed: sp, slap: S.sprint > 0 ? 1 - S.sprint / 0.45 : -1, happy: S.cheer > 0 });
-    ctx.save(); ctx.translate(A.x, A.y); ctx.scale(-1, 1); Art.drawBoss(ctx, S.o.boss, 0, 0, S.o.scale, { t, talk: S.msgT > 0 && S.lastGoal === 'ai' }); ctx.restore();
+    if (S.duel) { drawFig(ctx, S.duel.p1, P, 1, t); drawFig(ctx, S.duel.p2, A, -1, t); }
+    else {
+      Art.drawDolphin(ctx, { x: P.x, y: P.y, facing: 1, angle: clamp(P.vy / 900, -0.4, 0.4), color: d.color, t, cos, scale: 0.78, speed: sp, slap: P.sprint > 0 ? 1 - P.sprint / 0.45 : -1, happy: S.cheer > 0 });
+      ctx.save(); ctx.translate(A.x, A.y); ctx.scale(-1, 1); Art.drawBoss(ctx, S.o.boss, 0, 0, S.o.scale, { t, talk: S.msgT > 0 && S.lastGoal === 'ai' }); ctx.restore();
+    }
     drawBall(ctx, b);
-    if (S.pointer) { ctx.beginPath(); ctx.arc(S.pointer.x, S.pointer.y, 16, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 3; ctx.stroke(); }
+    for (const q of Object.values(S.pointers)) { ctx.beginPath(); ctx.arc(q.x, q.y, 16, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 3; ctx.stroke(); }
     for (const p of S.parts) { const a = Math.max(0, p.life); if (p.type === 'b') { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.strokeStyle = `rgba(230,250,255,${a})`; ctx.lineWidth = 1.5; ctx.stroke(); } else { ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, 7, 10); ctx.globalAlpha = 1; } }
     // Anzeigetafel
     Art.rr(ctx, VW / 2 - 230, 8, 460, 58, 16); const sg = ctx.createLinearGradient(0, 8, 0, 66); sg.addColorStop(0, '#8a5a2a'); sg.addColorStop(1, '#5a3418'); Art.fillS(ctx, sg, 4, '#ffcc4a');
     ctx.font = 'bold 24px Fredoka, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
-    ctx.textAlign = 'right'; ctx.fillText(d.name, VW / 2 - 70, 38); ctx.textAlign = 'left'; ctx.fillText(S.o.name, VW / 2 + 70, 38);
+    ctx.textAlign = 'right'; ctx.fillText(S.duel ? S.duel.p1.name : d.name, VW / 2 - 70, 38); ctx.textAlign = 'left'; ctx.fillText(S.o.name, VW / 2 + 70, 38);
     ctx.textAlign = 'center'; ctx.font = 'bold 38px Fredoka, sans-serif'; ctx.fillStyle = '#ffe08a'; ctx.fillText(S.ps + ' : ' + S.as, VW / 2, 39);
     ctx.font = '500 15px Fredoka, sans-serif'; ctx.fillStyle = '#bfe8ff'; ctx.textBaseline = 'alphabetic'; ctx.fillText('Wer zuerst ' + S.o.win + ' Tore schießt, gewinnt', VW / 2, 86);
     // Sprechblase Mbappé
@@ -206,9 +223,13 @@
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (S.state === 'count') { const n = Math.ceil(2.4 - S.st); big(ctx, n > 0 ? String(n) : 'Anpfiff!', 90); }
     if (S.state === 'goal' && S.bannerT > 0) big(ctx, S.banner, S.lastGoal === 'player' ? 110 : 64, S.lastGoal === 'player' ? '#ffd23a' : '#ff8a9a');
-    if (S.state === 'end') big(ctx, S.ps >= S.o.win ? 'SIEG!' : 'Verloren …', 100, S.ps >= S.o.win ? '#ffd23a' : '#ff8a9a');
-    if (S.sprintCd > 0 && S.state === 'play') { ctx.beginPath(); ctx.arc(P.x, P.y - 52, 9, -Math.PI / 2, -Math.PI / 2 + (1 - S.sprintCd / 1.4) * Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4; ctx.stroke(); }
+    if (S.state === 'end') { if (S.duel) big(ctx, (S.ps >= S.o.win ? S.duel.p1.name : S.duel.p2.name) + ' gewinnt!', 80, '#ffd23a'); else big(ctx, S.ps >= S.o.win ? 'SIEG!' : 'Verloren …', 100, S.ps >= S.o.win ? '#ffd23a' : '#ff8a9a'); }
+    for (const M of S.duel ? [P, A] : [P]) if (M.sprintCd > 0 && S.state === 'play') { ctx.beginPath(); ctx.arc(M.x, M.y - 56, 9, -Math.PI / 2, -Math.PI / 2 + (1 - M.sprintCd / 1.4) * Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4; ctx.stroke(); }
     ctx.textBaseline = 'alphabetic';
+  }
+  function drawFig(ctx, fig, M, facing, t) {
+    if (fig.kind === 'dolphin') { Art.drawDolphin(ctx, { x: M.x, y: M.y, facing, angle: clamp(M.vy / 900, -0.4, 0.4) * facing, color: fig.color, t, cos: fig.cos, scale: 0.78, speed: Math.min(1, Math.hypot(M.vx, M.vy) / 560), slap: M.sprint > 0 ? 1 - M.sprint / 0.45 : -1, happy: S.cheer > 0 }); return; }
+    ctx.save(); ctx.translate(M.x, M.y); if (facing < 0) ctx.scale(-1, 1); Art.drawBoss(ctx, fig.id, 0, 0, fig.scale || 0.28, { t, talk: S.cheer > 0 }); ctx.restore();
   }
   function big(ctx, text, size, col) { ctx.font = `bold ${size}px Fredoka, sans-serif`; ctx.lineWidth = 10; ctx.strokeStyle = '#0a2a4a'; ctx.strokeText(text, VW / 2, MIDY); ctx.fillStyle = col || '#fff'; ctx.fillText(text, VW / 2, MIDY); }
   function drawGoal(ctx, x, dir) {
