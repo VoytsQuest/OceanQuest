@@ -46,6 +46,11 @@ Spielständen oder einen der 8 Bosse) und die Torzahl (3, 5 oder 7).
 Spieler 1 (links): W A S D + Leertaste (Sprint) · Spieler 2 (rechts): Pfeiltasten + Enter (Sprint).
 Auf dem iPad zieht jeder mit dem Finger auf seiner Spielfeldhälfte – beide gleichzeitig.
 
+## Spielzeit-Limit
+90 Minuten pro Gerät und Tag (gezählt wird nur, solange das Spiel sichtbar geöffnet ist; neuer Tag ab 00:00 Uhr).
+Warnungen bei 10, 5 und 1 Minute Restzeit, danach wird der Fortschritt gespeichert und eine Pausen-Nachricht angezeigt.
+Die heutige Spielzeit steht unter Einstellungen. Grenze ändern: `LIMIT` in `js/limit.js`.
+
 ## Urkunden
 Drei druckbare Urkunden (auch als PDF): Spiel durchgespielt (mit richtigen/falschen Antworten, Muscheln und weggestoßenen Gegnern),
 Mathe-Contest und Fußball-Modus.
@@ -71,6 +76,7 @@ assets/video/         VoytsQuest-Intro
 js/audio.js           Musik-Playlist + synthetische Soundeffekte
 js/input.js           Tastatur + Multitouch
 js/save.js            Spielstand (robust gegen beschädigte Daten)
+js/limit.js           Spielzeit-Limit (90 Minuten pro Tag)
 tests/mathgen.test.js Automatischer Test: node tests/mathgen.test.js  (46.500 Aufgaben inkl. Quiz)
 tests/browser.test.js Playwright-Test inkl. Erreichbarkeitsprüfung aller 8 Level
 ```

@@ -242,6 +242,7 @@
         <div class="setrow"><span>Aktueller Track</span><b id="trk">${esc(Sound.current().title)}</b><button class="btn small" data-act="nexttrack">⏭ Nächster (M)</button></div>
         <div class="setrow"><span>Soundeffekte</span><button class="btn small" data-act="sfx">${st.sfx ? 'An ✔' : 'Aus'}</button><input type="range" min="0" max="1" step="0.05" value="${st.sfxVol}" id="svol" aria-label="Effektlautstärke"></div>
         <div class="setrow"><span>Touch-Steuerung</span>${['auto', 'an', 'aus'].map(k => `<button class="btn small ${st.touch === k ? 'sel' : ''}" data-act="touch" data-arg="${k}">${k === 'auto' ? 'Automatisch' : k === 'an' ? 'Immer an' : 'Aus'}</button>`).join('')}</div>
+        <div class="setrow"><span>Spielzeit heute</span><b>${Math.floor(Limit.used() / 60)} von 90 Minuten</b><small class="note">Limit pro Gerät und Tag, neuer Tag ab 00:00 Uhr</small></div>
         <div class="setrow"><span>Spielstand</span><button class="btn small" data-act="goto" data-arg="slots">💾 Spielstände</button><button class="btn small warn" data-act="reset">Diesen Spielstand löschen</button></div>
         <p class="note">Der Spielstand wird nur auf diesem Gerät gespeichert. Es werden keine Daten übertragen.</p></div>`;
       $('#mvol').addEventListener('input', e => { st.musicVol = +e.target.value; Sound.setMusicVol(st.musicVol); Save.save(); });

@@ -16,7 +16,7 @@
   // Startbildschirm + VoytsQuest-Intro (Ton erst nach Nutzerinteraktion erlaubt)
   const splash = document.getElementById('splash'), video = document.getElementById('intro');
   let introDone = false;
-  const endIntro = () => { if (introDone) return; introDone = true; try { video.pause(); } catch (e) {} splash.classList.add('fade'); setTimeout(() => splash.remove(), 600); Sound.startMusic(); };
+  const endIntro = () => { if (introDone) return; introDone = true; Limit.active = true; try { video.pause(); } catch (e) {} splash.classList.add('fade'); setTimeout(() => splash.remove(), 600); if (!Limit.locked) Sound.startMusic(); };
   const startIntro = () => {
     if (splash.classList.contains('playing')) return;
     Sound.unlock(true); splash.classList.add('playing');
@@ -38,11 +38,12 @@
   ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, e => Finale.pointer('up', 0, 0, e.pointerId)));
 
   const start = () => {
-    UI.init();
+    UI.init(); Limit.init();
     let last = performance.now();
     function frame(now) {
       const dt = Math.min(1 / 30, Math.max(0, (now - last) / 1000)); last = now;
       const ev = Input.consume();
+      if (Limit.locked) { requestAnimationFrame(frame); return; }
       if (ev.next) Sound.next();
       if (!introDone) { UI.renderMenu(ctx, dt); requestAnimationFrame(frame); return; }
       if (UI.mode === 'finale') { if (ev.esc) UI.togglePause(); Finale.update(dt, ev); Finale.render(ctx); }
