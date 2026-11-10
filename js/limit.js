@@ -26,7 +26,7 @@
       if (this.locked && document.getElementById('limit')) return;
       this.locked = true;
       try { if (root.Game && Game.L && Game.hooks && Game.hooks.autosave) Game.hooks.autosave(); } catch (e) { }
-      try { if (root.Game) Game.paused = true; if (root.Finale) Finale.paused = true; if (root.Sound && Sound.el) Sound.el.pause(); } catch (e) { }
+      try { if (root.Game) Game.paused = true; if (root.Finale) Finale.paused = true; if (root.Expedition) Expedition.paused = true; if (root.Sound && Sound.el) Sound.el.pause(); } catch (e) { }
       const ov = document.createElement('div'); ov.id = 'limit';
       ov.innerHTML = `<div class="limitpanel"><canvas id="limitcv" width="420" height="190"></canvas>
         <h2>Zeit für eine Pause!</h2>

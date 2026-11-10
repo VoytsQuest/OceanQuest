@@ -35,6 +35,7 @@
       settings: { music: true, sfx: true, musicVol: 0.55, sfxVol: 0.8, touch: 'auto' },
       resume: null, contest: { played: 0, best: 0, won: 0, last: null }, savedAt: null,
       stats: { correct: 0, wrong: 0, shells: 0, knocks: 0 },
+      expeditions: { medals: [0, 0, 0, 0, 0, 0], nightmare: [false, false, false, false, false, false, false, false], lexicon: [], date: null },
       football: { won: [false, false, false, false, false, false, false, false], scores: ['', '', '', '', '', '', '', ''], goals: 0, against: 0, tasks: 0, tasksRight: 0, points: 0, date: null }
     };
   }
@@ -70,6 +71,11 @@
     if (raw.contest && typeof raw.contest === 'object') d.contest = { played: Math.round(num(raw.contest.played, 0, 0, 1e6)), best: Math.round(num(raw.contest.best, 0, 0, 15)), won: Math.round(num(raw.contest.won, 0, 0, 1e9)) };
     d.savedAt = str(raw.savedAt, null, 30);
     if (raw.contest && raw.contest.last && typeof raw.contest.last === 'object') { const l = raw.contest.last; d.contest.last = { step: Math.round(num(l.step, 0, 0, 15)), prize: Math.round(num(l.prize, 0, 0, 1e6)), how: ['win', 'walk', 'wrong'].includes(l.how) ? l.how : 'wrong', jokers: Math.round(num(l.jokers, 0, 0, 3)), date: str(l.date, '', 30) }; }
+    if (raw.expeditions && typeof raw.expeditions === 'object') { const e = raw.expeditions;
+      if (Array.isArray(e.medals)) d.expeditions.medals = d.expeditions.medals.map((_, i) => Math.round(num(e.medals[i], 0, 0, 3)));
+      if (Array.isArray(e.nightmare)) d.expeditions.nightmare = d.expeditions.nightmare.map((_, i) => !!e.nightmare[i]);
+      if (Array.isArray(e.lexicon)) d.expeditions.lexicon = e.lexicon.filter(x => typeof x === 'string' && x.length < 20).slice(0, 12);
+      d.expeditions.date = str(e.date, null, 30); }
     if (raw.stats && typeof raw.stats === 'object') ['correct', 'wrong', 'shells', 'knocks'].forEach(k => d.stats[k] = Math.round(num(raw.stats[k], 0, 0, 1e7)));
     if (raw.football && typeof raw.football === 'object') { const f = raw.football;
       if (Array.isArray(f.won)) d.football.won = d.football.won.map((_, i) => !!f.won[i]);

@@ -26,6 +26,11 @@
       show('main');
     },
     togglePause() {
+      if (mode === 'expedition') {
+        const X = Expedition.X; if (!X || ['modal', 'won'].includes(X.state)) return;
+        if (Expedition.paused) { if (X.intro) return; Expedition.paused = false; closeOverlay(); return; }
+        Expedition.paused = true; overlay(`<div class="panel pause"><h2>Pause</h2><button class="btn big" data-act="resume">▶ Weiter</button><button class="btn" data-act="expstart" data-arg="${X.id}">⟲ Expedition neu starten</button><button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button><button class="btn" data-act="expquit">🧭 Zur Expeditionskarte</button></div>`); return;
+      }
       if (mode === 'finale') {
         if (Finale.paused) { Finale.paused = false; closeOverlay(); return; }
         Finale.paused = true; const lg = footIdx !== null, du = duelOn;
@@ -43,21 +48,21 @@
         <button class="btn" data-act="music">${Sound.music ? '♫ Musik aus' : '♫ Musik an'}</button>
         <button class="btn" data-act="quit">⌂ Zur Weltkarte</button></div>`); updateChrome();
     },
-    back() { if (screen !== 'main' && !['finale', 'cert', 'contest'].includes(screen)) show('main'); },
+    back() { if (screen !== 'main' && !['finale', 'cert', 'contest', 'expedition'].includes(screen)) show(['lexicon', 'nightmare'].includes(screen) ? 'expmap' : 'main'); },
     renderMenu(ctx, dt) { renderMenuScene(ctx, dt); },
     toast
   };
 
   /* ---------- Hilfsfunktionen ---------- */
-  function autosave() { const s = Game.snapshot(); if (s && S().created) { S().resume = s; Save.save(); return true; } return false; }
+  function autosave() { if (Game.L && Game.L.nightmare) return false; const s = Game.snapshot(); if (s && S().created) { S().resume = s; Save.save(); return true; } return false; }
   function toast(text) { const t = $('#toast'); t.textContent = text; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
   function overlay(html) { let o = $('#overlay'); if (!o) { o = document.createElement('div'); o.id = 'overlay'; ui.appendChild(o); } o.innerHTML = html; o.style.display = 'flex'; return o; }
   function closeOverlay() { const o = $('#overlay'); if (o) { o.style.display = 'none'; o.innerHTML = ''; } }
   function updateChrome() {
     const st = S().settings; const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-    const showTouch = mode === 'game' && !Game.paused && (st.touch === 'an' || (st.touch === 'auto' && isTouch)) && Game.L && ['play', 'collect', 'title'].includes(Game.L.state);
+    const showTouch = (st.touch === 'an' || (st.touch === 'auto' && isTouch)) && ((mode === 'game' && !Game.paused && Game.L && ['play', 'collect', 'title'].includes(Game.L.state)) || (mode === 'expedition' && !Expedition.paused && Expedition.X && ['play', 'title'].includes(Expedition.X.state)));
     $('#touch').style.display = showTouch ? 'block' : 'none';
-    $('#btn-pause').style.display = mode === 'game' || mode === 'finale' ? 'flex' : 'none';
+    $('#btn-pause').style.display = mode === 'game' || mode === 'finale' || mode === 'expedition' ? 'flex' : 'none';
   }
   setInterval(() => updateChrome(), 300);
   function miniCanvas(w, h, draw, animate) {
@@ -88,7 +93,7 @@
       case 'newold': if (S().created && S().defeated.some(Boolean)) { overlay(`<div class="panel"><h2>Neues Spiel?</h2><p>Dein bisheriger Fortschritt (${Save.pearls()} Perlen) wird gelöscht. Muschel-Coins und Shop-Items bleiben erhalten.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="newyes">Ja, neu beginnen</button></div></div>`); } else show('create', { fresh: true }); break;
       case 'newyes': { const keep = { coins: S().coins, owned: S().owned, equipped: S().equipped }; Save.resetProgress(); Object.assign(S(), keep); Save.save(); closeOverlay(); show('create', { fresh: true }); break; }
       case 'continue': if (!S().created) show('slots'); else if (S().resume) startWorld(S().resume.world, S().resume); else show('worlds'); break;
-      case 'savegame': if (autosave()) toast('💾 Gespeichert! Du machst später am letzten Checkpoint weiter.'); else toast('Gerade nicht möglich – der Boss ist schon besiegt.'); break;
+      case 'savegame': if (autosave()) toast('💾 Gespeichert! Du machst später am letzten Checkpoint weiter.'); else toast(Game.L && Game.L.nightmare ? 'Im Albtraum-Modus wird nicht zwischengespeichert.' : 'Gerade nicht möglich – der Boss ist schon besiegt.'); break;
       case 'slotplay': Save.useSlot(+arg); Sound.sfx('switch'); toast('Spielstand ' + (+arg + 1) + ': ' + S().name); show('main'); break;
       case 'slotnew': Save.useSlot(+arg); show('create', { fresh: true }); break;
       case 'slotdel': overlay(`<div class="panel"><h2>Spielstand löschen?</h2><p>Spielstand ${+arg + 1} (${esc(Save.slots[+arg] ? Save.slots[+arg].name : '')}) mit allen Perlen, Coins und Items wird gelöscht.</p><div class="row"><button class="btn" data-act="closeov">Abbrechen</button><button class="btn warn" data-act="slotdelyes" data-arg="${arg}">Ja, löschen</button></div></div>`); break;
@@ -119,7 +124,8 @@
       case 'resume': UI.togglePause(); break;
       case 'cprestart': Game.paused = false; closeOverlay(); Game.respawnAtCheckpoint(); break;
       case 'restartlvl': { Game.paused = false; closeOverlay(); const w = Game.L.wid; if (S().resume && S().resume.world === w) { S().resume = null; Save.save(); } startWorld(w); break; }
-      case 'quit': if (mode === 'game') autosave(); Game.paused = false; Finale.paused = false; Finale.stop(); closeOverlay(); Game.stop(); mode = 'menu'; Sound.forWorld(0); show('worlds'); break;
+      case 'quit': if (mode === 'game' && Game.L && Game.L.nightmare) { Game.paused = false; closeOverlay(); Game.stop(); show('nightmare'); break; }
+        if (mode === 'game') autosave(); Game.paused = false; Finale.paused = false; Finale.stop(); closeOverlay(); Game.stop(); mode = 'menu'; Sound.forWorld(0); show('worlds'); break;
       case 'music': S().settings.music = !S().settings.music; Sound.setMusic(S().settings.music); Save.save(); if (el) el.textContent = S().settings.music ? '♫ Musik aus' : '♫ Musik an'; if (screen === 'settings' && mode === 'menu') show('settings'); break;
       case 'sfx': S().settings.sfx = !S().settings.sfx; Sound.setSfx(S().settings.sfx); Save.save(); show('settings'); break;
       case 'touch': S().settings.touch = arg; Save.save(); show('settings'); break;
@@ -138,6 +144,11 @@
       case 'duelfig': { const [pl, i] = arg.split(':'); DUEL[pl] = +i; ui.querySelectorAll(`.figtile[data-pl="${pl}"]`).forEach(b => b.classList.toggle('sel', +b.dataset.i === +i)); Sound.sfx('switch'); updateDuelBar(); break; }
       case 'duelwin': DUEL.win = +arg; ui.querySelectorAll('.winbtn').forEach(b => b.classList.toggle('sel', +b.dataset.arg === DUEL.win)); break;
       case 'duelgo': Finale.paused = false; startDuel(); break;
+      case 'expeditions': if (duelOpen()) show('expmap'); else overlay(`<div class="panel"><h2>🧭 Expeditionen</h2><p>Die Expeditionen öffnen sich, wenn du <b>alle Modi</b> freigeschaltet hast – also auch alle 8 Stadien im Fußball-Modus gewonnen.</p><p>Fußball-Liga bisher: <b>${S().football.won.filter(Boolean).length} von 8</b></p><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
+      case 'expstart': Expedition.paused = false; closeOverlay(); if (arg === 'albtraum') show('nightmare'); else startExpedition(arg); break;
+      case 'expgo': { const X = Expedition.X; if (X) X.intro = false; Expedition.paused = false; closeOverlay(); break; }
+      case 'expquit': Expedition.paused = false; Expedition.stop(); Game.stop(); closeOverlay(); Sound.forWorld(0); show('expmap'); break;
+      case 'nightplay': startWorld(+arg, null, { nightmare: true }); break;
       case 'duelquit': Finale.paused = false; Finale.stop(); closeOverlay(); duelOn = false; Sound.forWorld(0); show('duelpick'); break;
       case 'leaguematch': Finale.paused = false; closeOverlay(); startLeagueMatch(+arg); break;
       case 'leaguequit': Finale.paused = false; Finale.stop(); closeOverlay(); footIdx = null; Sound.forWorld(0); show('league'); break;
@@ -147,10 +158,10 @@
     }
   }
 
-  function startWorld(w, resume) {
+  function startWorld(w, resume, opts) {
     if (w > S().unlocked) { toast('Diese Welt ist noch gesperrt.'); return; }
     mode = 'game'; screen = 'game'; ui.innerHTML = ''; ui.className = 'ingame';
-    Game.start(w, resume); updateChrome();
+    Game.start(w, resume, opts); updateChrome();
     if (resume) setTimeout(() => toast('💾 Weiter am Checkpoint in Welt ' + w), 400);
   }
 
@@ -173,6 +184,7 @@
         <button class="btn contestbtn" data-act="contest">🎤 Mathe-Contest</button>
         <button class="btn footbtn ${has && footballOpen() ? '' : 'lockedbtn'}" data-act="football">⚽ Fußball-Modus${has && footballOpen() ? '' : ' 🔒'}</button>
         <button class="btn footbtn ${has && duelOpen() ? '' : 'lockedbtn'}" data-act="duel">🤝 Fußball-Duell${has && duelOpen() ? '' : ' 🔒'}</button>
+        <button class="btn expbtn ${has && duelOpen() ? '' : 'lockedbtn'}" data-act="expeditions">🧭 Expeditionen${has && duelOpen() ? '' : ' 🔒'}</button>
         <button class="btn" data-act="goto" data-arg="create">🐬 Mein Delfin</button>
         <button class="btn" data-act="goto" data-arg="shop">🐚 Delfin-Shop</button>
         <button class="btn" data-act="${has ? 'goto' : 'continue'}" data-arg="worlds">🗺 Welten</button>
@@ -285,6 +297,28 @@
       ui.querySelectorAll('.st-cv').forEach(el => el.appendChild(bossCanvas(el.dataset.boss, 200, 110, 0.36, el.dataset.grey === '1')));
       ui.querySelectorAll('.rwico').forEach(el => el.appendChild(itemIcon(el.dataset.ico, 90, 54)));
     },
+    expmap() {
+      const e = S().expeditions; const all = e.medals.every(m => m >= 1); Sound.forWorld(0);
+      const MED = ['🥉', '🥈', '🥇'];
+      ui.innerHTML = header('Expeditionen', `${esc(S().name)} · ${e.medals.filter(m => m).length} von 6 geschafft · Dash: Umschalttaste oder K · im Seegras kannst du dich verstecken`) + `<div class="expgrid">${Expedition.DEFS.map((D, i) => {
+        const m = e.medals[i]; const it = Save.ITEMS.find(x => x.id === D.reward); const own = S().owned.includes(D.reward);
+        return `<button class="expcard ${m ? 'done' : ''} ${D.id === 'albtraum' ? 'night' : ''}" data-act="expstart" data-arg="${D.id}"><div class="ex-ico">${D.icon}</div><div class="ex-name">${D.name}</div><div class="ex-desc">${D.short}</div>
+          <div class="ex-med">${[1, 2, 3].map(k => `<span class="${m >= k ? 'on' : ''}" title="${esc(D.medals[k - 1])}">${MED[k - 1]}</span>`).join('')}</div><div class="ex-rw"><span class="rwico" data-ico="${D.reward}"></span>${esc(it.name)} ${own ? '✔' : ''}</div></button>`; }).join('')}</div>
+        <div class="expbar"><button class="btn small" data-act="goto" data-arg="lexicon">📖 Meeres-Lexikon (${e.lexicon.length}/12)</button><span class="note">Medaillen: 🥉 geschafft · 🥈 gut · 🥇 perfekt – Fahre mit der Maus über eine Medaille für die Bedingung.</span>${all ? '<button class="btn gold small" data-act="cert" data-arg="expedition">📜 Expeditions-Urkunde</button>' : ''}</div>`;
+      ui.querySelectorAll('.rwico').forEach(el => el.appendChild(itemIcon(el.dataset.ico, 70, 42)));
+    },
+    lexicon() {
+      const lx = S().expeditions.lexicon;
+      ui.innerHTML = header('Meeres-Lexikon', `${lx.length} von 12 Meerestieren entdeckt – finde sie bei der Riff-Erkundung`) + `<div class="lexgrid">${Expedition.CREATURES.map(c => { const f = lx.includes(c.id); return `<div class="lexcard ${f ? '' : 'unknown'}"><div class="lex-cv" data-id="${c.id}" data-f="${f ? 1 : 0}"></div><b>${f ? esc(c.name) : '???'}</b><p>${f ? esc(c.fact) : 'Noch nicht entdeckt.'}</p></div>`; }).join('')}</div>`;
+      ui.querySelectorAll('.lex-cv').forEach(el => el.appendChild(miniCanvas(150, 70, (ctx, t) => { if (el.dataset.f === '0') ctx.filter = 'brightness(0) opacity(0.35)'; ExpeditionArt.drawCreature(ctx, el.dataset.id, 75, 38, t, 1.2); ctx.filter = 'none'; }, true)));
+      const b = ui.querySelector('.hdr .back'); if (b) b.dataset.arg = 'expmap';
+    },
+    nightmare() {
+      const nm = S().expeditions.nightmare; Sound.forWorld(8);
+      ui.innerHTML = header('Albtraum-Tiefsee', `${nm.filter(Boolean).length} von 8 geschafft · nur 1 Herz · schnellere Gegner · schwerere Aufgaben · Boss mit 2 Fragen mehr`) + `<div class="worldgrid night">${WORLDS.map((W, i) => `<button class="wcard nightcard ${nm[i] ? 'done' : ''}" data-act="nightplay" data-arg="${W.id}"><div class="wc-boss" data-boss="${W.boss}"></div><div class="wc-name">${W.id}. ${W.bossName}<small>Albtraum-${W.short}</small></div><div class="wc-info">${nm[i] ? '💀 geschafft' : '▶ wagen'}</div></button>`).join('')}</div>`;
+      ui.querySelectorAll('.wc-boss').forEach(el => el.appendChild(miniCanvas(200, 130, (ctx, t) => { Art.drawBoss(ctx, el.dataset.boss, 100, 74, 0.42, { t }); ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = 'rgba(160,0,40,0.35)'; ctx.fillRect(0, 0, 200, 130); ctx.globalCompositeOperation = 'source-over'; }, true)));
+      const b = ui.querySelector('.hdr .back'); if (b) b.dataset.arg = 'expmap';
+    },
     duelpick() {
       const figs = duelFigs(); DUEL.p1 = Math.min(DUEL.p1, figs.length - 1); DUEL.p2 = Math.min(DUEL.p2 === null ? figs.length - 1 : DUEL.p2, figs.length - 1);
       const panel = (pl, title, keys) => `<div class="duelside ${pl}"><div class="ds-head"><b>${title}</b><span>${keys}</span></div><div class="figgrid">${figs.map((f, i) => `<button class="figtile ${DUEL[pl] === i ? 'sel' : ''}" data-act="duelfig" data-arg="${pl}:${i}" data-pl="${pl}" data-i="${i}"><div class="fig-cv" data-i="${i}"></div><span>${esc(f.name)}</span></button>`).join('')}</div></div>`;
@@ -335,7 +369,7 @@
     let task, attempts = 0;
     const say = (text, cls) => { const b = panel.querySelector('.bubble'); b.textContent = text; b.className = 'bubble ' + (cls || ''); };
     const next = () => {
-      task = MathGen.generate(W.id); attempts = 0;
+      task = MathGen.generate(Game.L && Game.L.nightmare ? Math.min(8, W.id + 1) : W.id); attempts = 0;
       panel.innerHTML = `<div class="mp-head"><span class="tag">${esc(task.label)}</span><span class="hp">${W.bossName}: ${'❤'.repeat(boss.hp)}<span class="lost">${'❤'.repeat(boss.max - boss.hp)}</span></span></div>
         <div class="bubble"></div><div class="task"></div><div class="fb" aria-live="polite"></div>`;
       say(boss.hp === boss.max ? 'Löse meine Aufgabe, ' + S().name + '!' : 'Noch ' + boss.hp + ' Aufgabe' + (boss.hp > 1 ? 'n' : '') + ' bis zum Sieg!');
@@ -404,6 +438,7 @@
 
   /* ---------- Ergebnis ---------- */
   function showResults(st) {
+    if (st.nightmare) { nightmareResult(st); return; }
     const d = S(); const w = st.world; const prev = d.best[w];
     const isBest = !prev || st.score > prev.score;
     d.best[w] = { time: prev ? Math.min(prev.time, st.time) : st.time, score: prev ? Math.max(prev.score, st.score) : st.score, stars: prev ? Math.max(prev.stars, st.stars) : st.stars };
@@ -465,7 +500,7 @@
     ctx.textAlign = 'center';
     const gt = ctx.createLinearGradient(0, 120, 0, 220); gt.addColorStop(0, '#2a8ad8'); gt.addColorStop(1, '#0a4a8a');
     ctx.font = 'bold 110px Fredoka, sans-serif'; ctx.lineWidth = 10; ctx.strokeStyle = '#ffd23a'; ctx.strokeText('OCEANQUEST', w / 2, 210); ctx.fillStyle = gt; ctx.fillText('OCEANQUEST', w / 2, 210);
-    const SUB = { game: 'MEISTER DER 8 MEERE', contest: cl.how === 'win' ? 'MUSCHEL-MILLIONÄR' : 'DIE GROSSE MUSCHEL-SHOW', football: 'FUSSBALL-MEISTER DER 8 MEERE' }[kind];
+    const SUB = { game: 'MEISTER DER 8 MEERE', contest: cl.how === 'win' ? 'MUSCHEL-MILLIONÄR' : 'DIE GROSSE MUSCHEL-SHOW', football: 'FUSSBALL-MEISTER DER 8 MEERE', expedition: 'EXPEDITIONS-LEITER DER 8 MEERE' }[kind];
     ctx.font = `bold ${SUB.length > 26 ? 44 : 56}px Fredoka, sans-serif`; ctx.fillStyle = '#7a4a10'; ctx.fillText(SUB, w / 2, 290);
     ctx.font = '600 30px Fredoka, sans-serif'; ctx.fillStyle = '#4a3010'; ctx.fillText(kind === 'contest' && cl.how !== 'win' ? 'Super gemacht!' : 'Herzlichen Glückwunsch!', w / 2, 360);
     const nm = d.childName ? `${d.childName} mit Delfin ${d.name}` : `Delfin ${d.name}`;
@@ -475,10 +510,14 @@
     const LINES = {
       game: ['Du hast alle acht Meeresbosse besiegt, die Geheimnisse der Tiefsee entdeckt', 'und Mbappé im großen Unterwasser-Finale ' + (d.exam.score || '') + ' geschlagen.', 'Du bist ein wahrer Meister der acht Meere!'],
       contest: cl.how === 'win' ? ['Du hast in der großen Muschel-Show alle 15 Mathe-Fragen', 'richtig beantwortet und den Hauptgewinn geholt.', 'Ein echtes Rechen-Ass!'] : [`Du hast in der großen Muschel-Show ${cl.step} von 15 Mathe-Fragen`, `richtig beantwortet und ${fmt(cl.prize)} Muschel-Coins gewonnen.`, cl.step >= 10 ? 'Eine starke Leistung!' : cl.step >= 5 ? 'Gut gerechnet – weiter so!' : 'Jede Show macht dich besser!'],
-      football: ['Du hast in allen acht Stadien gegen die Meeresbosse gewonnen', `und dabei ${f.goals} Tore geschossen.`, 'Ein wahrer Unterwasser-Fußballstar!']
+      football: ['Du hast in allen acht Stadien gegen die Meeresbosse gewonnen', `und dabei ${f.goals} Tore geschossen.`, 'Ein wahrer Unterwasser-Fußballstar!'],
+      expedition: ['Du bist vor Bruno geflohen, hast das Riff erkundet, bist bis zum Meeresgrund getaucht,', 'der Lava entkommen, Meerestiere gerettet und dich der Albtraum-Tiefsee gestellt.', 'Eine wahre Expeditions-Leitung!']
     }[kind];
     LINES.forEach((l, i) => ctx.fillText(l, w / 2, 520 + i * 42));
-    if (kind === 'contest') {
+    if (kind === 'expedition') {
+      const ex = d.expeditions; const MC = ['#d8d0c0', '#cd7f32', '#c0c8d0', '#ffcc2a'];
+      Expedition.DEFS.forEach((D, i) => { const x = w / 2 + (i - 2.5) * 170, y = 735; Art.ell(ctx, x, y, 52, 52); Art.fillS(ctx, MC[ex.medals[i]], 5, '#8a6200'); ctx.font = '44px sans-serif'; ctx.fillText(D.icon, x, y + 16); ctx.font = 'bold 19px Fredoka, sans-serif'; ctx.fillStyle = '#3a2a10'; ctx.fillText(D.name, x, y + 80); ctx.font = '500 16px Fredoka, sans-serif'; ctx.fillText(['–', 'Bronze', 'Silber', 'Gold'][ex.medals[i]], x, y + 100); });
+    } else if (kind === 'contest') {
       const LAD = [20, 40, 70, 100, 150, 200, 300, 400, 600, 800, 1000, 1500, 2000, 3000, 5000];
       for (let i = 0; i < 15; i++) { const x = w / 2 + (i - 7) * 74, y = 730, got = i < cl.step, safe = i === 4 || i === 9;
         Art.ell(ctx, x, y, 30, 30); Art.fillS(ctx, got ? '#ffcc2a' : '#f4e6c0', safe ? 5 : 3, safe ? '#c8283a' : '#a87a00');
@@ -492,23 +531,24 @@
     const VALS = {
       game: [`Richtig gelöste Aufgaben: ${fmt(st.correct)}   ·   Falsche Antworten: ${fmt(st.wrong)}   ·   Gesammelte Muscheln: ${fmt(st.shells)}   ·   Weggestoßene Gegner: ${fmt(st.knocks)}`, `Gesamtpunktzahl: ${fmt(total)}   ·   Gesamtspielzeit: ${fmtTime(d.playTime)}   ·   Finale: ${d.exam.score || '–'}`],
       contest: [`Richtig beantwortet: ${cl.step} von 15   ·   Joker eingesetzt: ${cl.jokers} von 3   ·   Gewinn: ${fmt(cl.prize)} Coins`, `Bester Lauf bisher: Frage ${d.contest.best}   ·   Shows gespielt: ${d.contest.played}`],
-      football: [`Tore: ${f.goals} : ${f.against}   ·   Aufwärm-Aufgaben richtig: ${f.tasksRight} von ${f.tasks}`, `Fußball-Punkte: ${fmt(f.points)}`]
+      football: [`Tore: ${f.goals} : ${f.against}   ·   Aufwärm-Aufgaben richtig: ${f.tasksRight} von ${f.tasks}`, `Fußball-Punkte: ${fmt(f.points)}`],
+      expedition: [`Goldmedaillen: ${d.expeditions.medals.filter(m => m === 3).length} von 6   ·   Meeres-Lexikon: ${d.expeditions.lexicon.length} von 12 Tieren`, `Albtraum-Welten geschafft: ${d.expeditions.nightmare.filter(Boolean).length} von 8`]
     }[kind];
     ctx.font = '600 24px Fredoka, sans-serif'; ctx.fillText(VALS[0], w / 2, 878); ctx.font = '500 22px Fredoka, sans-serif'; ctx.fillText(VALS[1], w / 2, 916);
-    ctx.font = '600 26px Fredoka, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Datum: ' + ({ game: d.exam.date, contest: cl.date, football: f.date }[kind] || new Date().toLocaleDateString('de-DE')), 150, 990);
+    ctx.font = '600 26px Fredoka, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Datum: ' + ({ game: d.exam.date, contest: cl.date, football: f.date, expedition: d.expeditions.date }[kind] || new Date().toLocaleDateString('de-DE')), 150, 990);
     ctx.textAlign = 'center'; ctx.font = 'bold 34px Fredoka, sans-serif'; ctx.fillStyle = '#0a4a8a'; ctx.fillText('VoytsQuest', w / 2, 1000); ctx.font = '500 18px Fredoka, sans-serif'; ctx.fillStyle = '#5a4a2a'; ctx.fillText('Lernspiele mit Abenteuer', w / 2, 1026);
     // Delfin + Siegel
     Art.drawDolphin(ctx, { x: 210, y: 300, facing: 1, color: d.color, t: 0.3, cos: Save.cosmetics(), scale: 1.6, happy: true });
     ctx.save(); ctx.translate(w - 250, 985); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; Art.ell(ctx, Math.cos(a) * 70, Math.sin(a) * 70, 20, 20); ctx.fillStyle = '#a81a2a'; ctx.fill(); }
     Art.ell(ctx, 0, 0, 76, 76); Art.fillS(ctx, '#c8283a', 4, '#7a0a1a'); Art.ell(ctx, 0, 0, 58, 58); Art.stroke(ctx, 3, '#ffb0b0');
-    ctx.font = 'bold 18px Fredoka, sans-serif'; ctx.fillStyle = '#ffe0e0'; ctx.textAlign = 'center'; ctx.fillText({ game: '8 MEERE', contest: 'SHOW', football: 'CHAMPION' }[kind], 0, -24); Art.drawPearl(ctx, 0, 10, 0, 18, true); ctx.restore();
+    ctx.font = 'bold 18px Fredoka, sans-serif'; ctx.fillStyle = '#ffe0e0'; ctx.textAlign = 'center'; ctx.fillText({ game: '8 MEERE', contest: 'SHOW', football: 'CHAMPION', expedition: 'EXPEDITION' }[kind], 0, -24); Art.drawPearl(ctx, 0, 10, 0, 18, true); ctx.restore();
     ctx.restore();
   }
   function renderCertScreen(kind) {
-    const d = S(); const ok = { game: d.exam.passed, contest: !!d.contest.last, football: d.football.won.every(Boolean) }[kind];
+    const d = S(); const ok = { game: d.exam.passed, contest: !!d.contest.last, football: d.football.won.every(Boolean), expedition: d.expeditions.medals.every(m => m >= 1) }[kind];
     if (!ok) { toast('Diese Urkunde gibt es noch nicht.'); show('main'); return; }
-    const title = { game: 'Deine Urkunde', contest: 'Urkunde: Muschel-Show', football: 'Urkunde: Fußball-Modus' }[kind];
-    const back = { game: ['worlds', '🗺 Weltkarte'], contest: ['contestpick', '🎤 Zur Show'], football: ['league', '🏟 Zur Liga'] }[kind];
+    const title = { game: 'Deine Urkunde', contest: 'Urkunde: Muschel-Show', football: 'Urkunde: Fußball-Modus', expedition: 'Urkunde: Expeditionen' }[kind];
+    const back = { game: ['worlds', '🗺 Weltkarte'], contest: ['contestpick', '🎤 Zur Show'], football: ['league', '🏟 Zur Liga'], expedition: ['expmap', '🧭 Expeditionen'] }[kind];
     ui.innerHTML = header(title) + `<div class="certwrap"><canvas id="certcv" width="1600" height="1131"></canvas>
       <div class="certside"><label class="lbl small">Dein Name (freiwillig):<input id="cn2" maxlength="30" value="${esc(d.childName)}" placeholder="Name des Kindes"></label>
       ${/claude/.test(location.hostname) && window.top !== window.self ? '<p class="note">Drucken und PDF-Export funktionieren in der veröffentlichten Version (z. B. GitHub Pages).</p>' : '<button class="btn gold" data-act="print">🖨 Drucken</button><button class="btn gold" data-act="pdf">📄 Als PDF speichern</button>'}<button class="btn" data-act="goto" data-arg="${back[0]}">${back[1]}</button></div></div>`;
@@ -758,6 +798,62 @@
       <table class="keys"><tr><td><b class="c1">Spieler 1 (links)</b></td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> schwimmen · <kbd class="wide2">Leertaste</kbd> Sprint</td></tr><tr><td><b class="c2">Spieler 2 (rechts)</b></td><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> schwimmen · <kbd class="wide2">Enter</kbd> Sprint</td></tr><tr><td>👆 iPad</td><td>Jeder zieht mit dem Finger auf seiner Hälfte</td></tr></table>
       <div class="row"><button class="btn big gold" data-act="kickoff" data-default>Anpfiff! ▶</button></div></div>`);
   }
+
+  /* ---------- Expeditionen ---------- */
+  function startExpedition(id) {
+    if (!duelOpen()) { act('expeditions'); return; }
+    closeOverlay(); Game.stop(); Finale.stop(); mode = 'expedition'; screen = 'expedition'; ui.innerHTML = ''; ui.className = 'ingame';
+    Expedition.start(id); Expedition.paused = true; Expedition.X.intro = true; const D = Expedition.X.def;
+    const extra = { haijagd: 'Bruno schwimmt dir hinterher! Bleib in Bewegung und schwimm durch das Tor, dessen Zahl die Frage oben beantwortet. Vor jedem Tor wird es langsamer.', riff: 'Keine Eile: Erkunde alles in Ruhe. Rissige Korallenwände kannst du mit dem Flossenschlag aufbrechen. Unten rechts siehst du die Karte. Schwimm zum Boot, um die Expedition zu beenden.', tauchgang: 'Behalte die Sauerstoffanzeige im Blick! Luftblasen aus den Schloten geben Luft. An Luftstationen löst du eine Sachaufgabe – das Spiel pausiert dabei.', vulkan: 'Schwimm schnell nach oben! Felsbrocken schiebst du mit dem Flossenschlag weg. Bei der Klappe müssen beide Schalter gleichzeitig leuchten. Lava-Schlösser öffnest du mit einer Aufgabe – dabei pausiert die Lava.', rettung: 'Schwimm zu den Knoten der Netze und benutze den Flossenschlag – jeder Knoten ist eine Aufgabe. Danach holst du Tilda ab: Sie folgt dir, wenn du in ihrer Nähe bleibst. Beschütze sie vor Krabben und Piranhas!' }[id];
+    overlay(`<div class="panel expintro"><h2>${D.icon} ${D.name}</h2><p>${extra}</p>
+      <table class="keys"><tr><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></td><td>schwimmen</td></tr><tr><td><kbd class="wide2">Leertaste</kbd></td><td>Flossenschlag</td></tr><tr><td><kbd class="wide2">Umschalt</kbd> / <kbd>K</kbd></td><td><b>Dash</b> – kurzer Sprint, kurz unverwundbar</td></tr><tr><td>🌿 Seegras</td><td>Langsam hineinschwimmen = versteckt vor Jägern</td></tr></table>
+      <p class="note">Medaillen: 🥉 ${esc(D.medals[0])} · 🥈 ${esc(D.medals[1])} · 🥇 ${esc(D.medals[2])}</p>
+      <div class="row"><button class="btn big gold" data-act="expgo" data-default>Los geht’s! ▶</button></div></div>`);
+  }
+  function mathModal(task, done) {
+    let tries = 0;
+    const o = overlay(`<div class="panel mathmodal"><div class="mp-head"><span class="tag">${esc(task.label)}</span><span class="progress">Das Spiel ist pausiert – nimm dir Zeit!</span></div><div class="task"></div><div class="fb" aria-live="polite"></div></div>`);
+    let sub; const api = renderTask(o.querySelector('.task'), task, sub = (input, api) => {
+      const fb = o.querySelector('.fb'); const fin = first => { const b = fb.querySelector('#nx'); b.onclick = () => { Sound.sfx('click'); closeOverlay(); done(first); }; };
+      if (MathGen.check(task, input)) { Sound.sfx('correct'); api.lock(true); fb.className = 'fb ok'; fb.innerHTML = `✔ Richtig! <button class="btn small gold" data-default id="nx">Weiter ▶</button>`; fin(tries === 0); }
+      else { tries++; Sound.sfx('wrong'); if (tries < 2) { fb.className = 'fb bad'; fb.innerHTML = `✘ Noch nicht. <span class="hint">${esc(task.hint)}</span>`; api.reset(); } else { api.lock(true); fb.className = 'fb bad'; fb.innerHTML = `${esc(task.solution)} <button class="btn small" data-default id="nx">Weiter ▶</button>`; fin(false); } }
+    });
+    UI._cur = { task, solve: () => sub(answerOf(task), api) };
+  }
+  function grantReward(id) { const d = S(); if (id && !d.owned.includes(id)) { d.owned.push(id); return true; } return false; }
+  function rewardBox(id) { const it = Save.ITEMS.find(x => x.id === id); return `<div class="rewardbox"><div id="rwcv"></div><div><b>Neues Item gewonnen:</b><br>${esc(it.name)}<br><button class="btn small gold" data-act="equip" data-arg="${id}">Jetzt anlegen</button></div></div>`; }
+  function expFinish(res) {
+    const d = S(), e = d.expeditions, i = Expedition.DEFS.findIndex(D => D.id === res.id), D = Expedition.DEFS[i];
+    const before = e.medals[i]; e.medals[i] = Math.max(before, res.medal); d.coins += res.coins;
+    if (res.lexicon) res.lexicon.forEach(id => { if (!e.lexicon.includes(id)) e.lexicon.push(id); });
+    const newItem = grantReward(D.reward) ? D.reward : null;
+    if (e.medals.every(m => m >= 1) && !e.date) e.date = new Date().toLocaleDateString('de-DE');
+    Save.save();
+    const MED = ['', '🥉 Bronze', '🥈 Silber', '🥇 Gold'];
+    overlay(`<div class="panel results"><h2>${D.icon} ${D.name} geschafft!</h2><div class="bigmedal">${MED[res.medal]}</div>${res.medal > before && before ? '<p><b>Neue Bestleistung!</b></p>' : ''}
+      <table class="rt">${res.lines.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}<tr class="tot"><td>Muschel-Coins</td><td>+${fmt(res.coins)}</td></tr></table>
+      ${res.medal < 3 ? `<p class="note">Für ${MED[res.medal + 1]}: ${esc(D.medals[res.medal])}</p>` : ''}${newItem ? rewardBox(newItem) : ''}
+      <div class="row"><button class="btn big gold" data-act="expquit" data-default>🧭 Zur Expeditionskarte</button><button class="btn" data-act="expstart" data-arg="${D.id}">⟲ Nochmal</button>${e.medals.every(m => m >= 1) ? '<button class="btn" data-act="cert" data-arg="expedition">📜 Urkunde</button>' : ''}</div></div>`);
+    if (newItem) $('#rwcv').appendChild(itemIcon(newItem, 150, 90));
+    confetti();
+  }
+  function nightmareResult(st) {
+    const d = S(), e = d.expeditions, w = st.world; const first = !e.nightmare[w - 1]; e.nightmare[w - 1] = true;
+    const n = e.nightmare.filter(Boolean).length; const medal = n >= 8 ? 3 : n >= 5 ? 2 : n >= 2 ? 1 : 0; const i = 5; e.medals[i] = Math.max(e.medals[i], medal);
+    d.coins += 300; const newItem = medal >= 1 ? (grantReward('trikot-expedition') ? 'trikot-expedition' : null) : null;
+    if (e.medals.every(m => m >= 1) && !e.date) e.date = new Date().toLocaleDateString('de-DE'); Save.save();
+    const nextW = WORLDS.find(W => !e.nightmare[W.id - 1]);
+    overlay(`<div class="panel results"><h2>💀 Albtraum-${WORLDS[w - 1].short} geschafft!</h2><p>${first ? 'Unglaublich – mit nur einem Herz!' : 'Wieder geschafft!'} <b>+300 Coins</b></p><p>Albtraum-Welten: <b>${n} von 8</b> ${medal ? '· Medaille: ' + ['', '🥉', '🥈', '🥇'][medal] : '(🥉 ab 2 Welten)'}</p>${newItem ? rewardBox(newItem) : ''}
+      <div class="row">${nextW ? `<button class="btn big gold" data-act="nightplay" data-arg="${nextW.id}" data-default>Nächster Albtraum ▶</button>` : ''}<button class="btn" data-act="quit">💀 Zur Albtraum-Auswahl</button></div></div>`);
+    if (newItem) $('#rwcv').appendChild(itemIcon(newItem, 150, 90));
+    confetti();
+  }
+  Expedition.hooks = {
+    math: mathModal, toast,
+    fact: (c, count, done) => { const o = overlay(`<div class="panel factpanel"><h2>📖 Neu im Lexikon: ${esc(c.name)}</h2><div id="factcv"></div><p class="fact">${esc(c.fact)}</p><p class="note">${count} von 12 Meerestieren entdeckt</p><div class="row"><button class="btn gold" id="factok" data-default>Weiter erkunden ▶</button></div></div>`); $('#factcv').appendChild(miniCanvas(260, 120, (ctx, t) => ExpeditionArt.drawCreature(ctx, c.id, 130, 64, t, 2.2), true)); $('#factok').onclick = () => { Sound.sfx('click'); closeOverlay(); done(); }; },
+    confirm: (text, yesL, noL, done) => { overlay(`<div class="panel"><h2>⚓ Zurück am Boot</h2><p>${esc(text)}</p><div class="row"><button class="btn" id="cfno">${esc(noL)}</button><button class="btn gold" id="cfyes" data-default>${esc(yesL)}</button></div></div>`); $('#cfyes').onclick = () => { closeOverlay(); done(true); }; $('#cfno').onclick = () => { closeOverlay(); done(false); }; },
+    finish: res => expFinish(res)
+  };
 
   /* ---------- Menü-Hintergrund ---------- */
   let mt = 0;

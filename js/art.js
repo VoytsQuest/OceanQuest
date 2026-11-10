@@ -54,10 +54,10 @@
     const sp = o.speed === undefined ? 0.4 : o.speed;
     const wag = Math.sin(t * (5 + sp * 9)) * (0.22 + sp * 0.18) + (o.slap >= 0 ? Math.sin(o.slap * Math.PI) * 1.2 : 0);
     if (o.hurt && Math.floor(t * 20) % 2 === 0) ctx.globalAlpha = 0.45;
-    const finFill = cos.fins === 'gold' ? '#ffcf3a' : cos.fins === 'hai' ? '#5d6f80' : null;
+    const finFill = cos.fins === 'gold' ? '#ffcf3a' : cos.fins === 'hai' ? '#5d6f80' : cos.fins === 'taucherflossen' ? '#ff7a1a' : null;
     const bodyFill = skinFill(ctx, c, skin, t);
     // Schwanzflosse
-    ctx.save(); ctx.translate(-53, 1); ctx.rotate(wag);
+    ctx.save(); ctx.translate(-53, 1); ctx.rotate(wag); if (cos.fins === 'taucherflossen') ctx.scale(1.45, 1.15);
     ctx.beginPath(); ctx.moveTo(4, 0); ctx.quadraticCurveTo(-6, -14, -24, -22); ctx.quadraticCurveTo(-16, -6, -18, 0); ctx.quadraticCurveTo(-16, 6, -24, 22); ctx.quadraticCurveTo(-6, 14, 4, 0);
     fillS(ctx, finFill || bodyFill, 2.5, outline); ctx.restore();
     // Rückenflosse
@@ -124,6 +124,18 @@
       fillS(ctx, '#ffcc2a', 2.5, '#a87a00'); ell(ctx, 0, -2, 3, 3); ctx.fillStyle = '#e8213a'; ctx.fill();
       [[-18, -14], [0, -18], [18, -14]].forEach(([x, y]) => { ell(ctx, x, y, 2.6, 2.6); ctx.fillStyle = '#fff3a0'; ctx.fill(); });
       ctx.restore();
+    }
+    if (h === 'forscherhut') {
+      ctx.save(); ctx.translate(14, -24); ctx.rotate(-0.1);
+      ell(ctx, 0, 2, 34, 7); fillS(ctx, '#c8a868', 2.5, '#6a5020');
+      ctx.beginPath(); ctx.moveTo(-22, 2); ctx.quadraticCurveTo(-22, -26, 0, -27); ctx.quadraticCurveTo(22, -26, 22, 2); ctx.closePath(); fillS(ctx, '#d8b878', 2.5, '#6a5020');
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(-22, -6, 44, 6); ell(ctx, -8, -16, 6, 3, -0.4); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill(); ctx.restore();
+    }
+    if (h === 'helmlampe') {
+      ctx.save(); ctx.translate(14, -24); ctx.rotate(-0.1);
+      const gl = ctx.createLinearGradient(16, -14, 90, -14); gl.addColorStop(0, 'rgba(255,250,190,0.75)'); gl.addColorStop(1, 'rgba(255,250,190,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.moveTo(22, -18); ctx.lineTo(92, -40); ctx.lineTo(92, 12); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-22, 2); ctx.quadraticCurveTo(-22, -26, 0, -27); ctx.quadraticCurveTo(22, -26, 22, 2); ctx.closePath(); fillS(ctx, '#ffcf2a', 2.5, '#7a5a00');
+      rr(ctx, 12, -22, 14, 12, 3); fillS(ctx, '#3a3a4a', 2, '#111'); ell(ctx, 24, -16, 4, 5); fillS(ctx, '#fffbe0', 1.5, '#9a8a40'); ctx.restore();
     }
     if (h === 'kopfhoerer') {
       ctx.beginPath(); ctx.arc(14, -12, 22, Math.PI * 1.05, Math.PI * 1.95); stroke(ctx, 5, '#2a3a8a');
@@ -579,12 +591,12 @@
     ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
     const dol = (cos, col) => drawDolphin(ctx, { x: 0, y: 6, facing: 1, color: col || 'blau', t, cos, scale: 0.75, speed: 0.2 });
     switch (id) {
-      case 'piratenhut': case 'krone': ctx.translate(-26, 66); ctx.scale(1.8, 1.8); drawCosmetics(ctx, { head: id }, t); break;
+      case 'piratenhut': case 'krone': case 'forscherhut': case 'helmlampe': ctx.translate(-26, 66); ctx.scale(1.8, 1.8); drawCosmetics(ctx, { head: id }, t); break;
       case 'kopfhoerer': ctx.translate(-25, 28); ctx.scale(1.75, 1.75); drawCosmetics(ctx, { head: id }, t); break;
       case 'taucherbrille': case 'sonnenbrille': case 'goldbrille': ctx.translate(-42, 20); ctx.scale(2, 2); drawCosmetics(ctx, { eyes: id }, t); break;
       case 'schnorchel': ctx.translate(-36, 46); ctx.scale(1.6, 1.6); drawCosmetics(ctx, { eyes: id }, t); break;
       case 'feuer': case 'regenbogen': case 'galaxie': case 'kristall': dol({ skin: id }); break;
-      case 'hai': case 'gold': dol({ fins: id }, 'blau'); break;
+      case 'hai': case 'gold': case 'taucherflossen': dol({ fins: id }, 'blau'); break;
       case 'trail-blubber': for (let i = 0; i < 6; i++) { ell(ctx, -36 + i * 14, Math.sin(i) * 8, 4 + i, 4 + i); fillS(ctx, 'rgba(200,240,255,0.5)', 2, '#bff'); } break;
       case 'trail-sterne': for (let i = 0; i < 5; i++) star(ctx, -36 + i * 18, Math.sin(i * 1.4) * 10, 5 + i * 1.5, '#ffe04a'); break;
       case 'trail-regenbogen': ['#ff5a5a', '#ffb13a', '#ffe94a', '#5ee36a', '#4ab8ff', '#9a6aff'].forEach((c, i) => { ctx.beginPath(); ctx.moveTo(-44, -10 + i * 4); ctx.quadraticCurveTo(0, -30 + i * 4, 44, -10 + i * 4); stroke(ctx, 4, c); }); break;
@@ -592,7 +604,7 @@
       default: {
         const X = root.ArtExtras; if (!X) break;
         if (X.OUTFITS[id]) drawDolphin(ctx, { x: 0, y: 6, facing: 1, color: 'blau', t, cos: { body: id }, scale: 0.8, speed: 0.2 });
-        else if (id === 'goldkette') drawDolphin(ctx, { x: -10, y: 4, facing: 1, color: 'blau', t, cos: { neck: id }, scale: 1.05, speed: 0.2 });
+        else if (['goldkette', 'haizahnkette', 'rettungsring'].includes(id)) drawDolphin(ctx, { x: -10, y: 4, facing: 1, color: 'blau', t, cos: { neck: id }, scale: 1.05, speed: 0.2 });
         else if (id.startsWith('peruecke-')) drawDolphin(ctx, { x: -18, y: 26, facing: 1, color: 'blau', t, cos: { hair: id }, scale: 1.05, speed: 0.2 });
         else if (id.startsWith('begleiter-')) { ctx.scale(1.5, 1.5); X.drawBuddy(ctx, id, 0, 2, t, 1); }
       }

@@ -46,6 +46,20 @@ Spielständen oder einen der 8 Bosse) und die Torzahl (3, 5 oder 7).
 Spieler 1 (links): W A S D + Leertaste (Sprint) · Spieler 2 (rechts): Pfeiltasten + Enter (Sprint).
 Auf dem iPad zieht jeder mit dem Finger auf seiner Spielfeldhälfte – beide gleichzeitig.
 
+## Expeditionen (Abenteuer-Modus)
+Öffnet sich, wenn alle anderen Modi geschafft sind (inkl. aller 8 Fußball-Stadien). Sechs Expeditionen mit je Bronze/Silber/Gold:
+1. **Die Hai-Jagd** – Bruno jagt dich, das Bild scrollt automatisch; Rechentore mit drei Ergebnissen (richtig = Turbo).
+2. **Riff-Erkundung** – offenes Riff mit Mini-Karte, 10 Schätze mit Zahlenschlössern (3 hinter Geheimwänden), 12 Meerestiere fürs Lexikon.
+3. **Tauchgang in die Tiefe** – senkrecht nach unten, Sauerstoffanzeige, Luftstationen mit Sachaufgaben, zunehmende Dunkelheit.
+4. **Vulkanflucht** – steigende Lava, Felsbrocken wegschieben, Doppelschalter, Lava-Schlösser (Lava pausiert bei Aufgaben).
+5. **Rettungsmission** – Netzknoten lösen (je eine Aufgabe), danach Babyschildkröte Tilda sicher zum Strand bringen.
+6. **Albtraum-Tiefsee** – die 8 Welten mit nur 1 Herz, schnelleren Gegnern, schwereren Aufgaben, Boss mit 2 Fragen mehr.
+
+Neue Bewegungen: **Dash** (Umschalt oder K, auf dem iPad eigener Knopf) mit kurzer Unverwundbarkeit, **Verstecken im Seegras**,
+Barrakudas mit erkennbarem Angriffsmuster (rotes Leuchten vor dem Angriff), Steinschlag mit Schatten-Vorwarnung.
+Belohnungen: Haizahn-Kette, Forscherhut, Helmlampe (macht dunkle Level heller), Taucherflossen, Rettungsring, Expeditions-Trikot.
+Meeres-Lexikon mit 12 Tieren und echten Fakten, Expeditions-Urkunde.
+
 ## Spielzeit-Limit
 90 Minuten pro Gerät und Tag (gezählt wird nur, solange das Spiel sichtbar geöffnet ist; neuer Tag ab 00:00 Uhr).
 Warnungen bei 10, 5 und 1 Minute Restzeit, danach wird der Fortschritt gespeichert und eine Pausen-Nachricht angezeigt.
@@ -71,6 +85,7 @@ js/game.js            Engine: Levelaufbau, Physik, Kollisionen, Gegner-KI, Bossa
 js/art.js             Prozedurale Cartoon-Grafik (Delfin, Gegner, 8 Bosse, Hintergründe)
 js/ui.js              Menüs, Delfin, Shop, Bosskampf, Ergebnis, Finale-Start, Urkunde (Druck + PDF)
 js/finale.js          Finale: Unterwasser-Fußball (Airhockey-Physik, Mbappé-KI, Zuschauer)
+js/expedition.js      Expeditionen: eigene Engine (Autoscroll, offene Karte, Sauerstoff, Lava, Eskorte)
 js/extras.js          Shop-Erweiterung: Trikots, Badeanzüge, Perücken, Begleiter
 assets/video/         VoytsQuest-Intro
 js/audio.js           Musik-Playlist + synthetische Soundeffekte

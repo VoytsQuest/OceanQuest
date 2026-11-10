@@ -46,7 +46,8 @@
       if (Limit.locked) { requestAnimationFrame(frame); return; }
       if (ev.next) Sound.next();
       if (!introDone) { UI.renderMenu(ctx, dt); requestAnimationFrame(frame); return; }
-      if (UI.mode === 'finale') { if (ev.esc) UI.togglePause(); Finale.update(dt, ev); Finale.render(ctx); }
+      if (UI.mode === 'expedition') { if (ev.esc) UI.togglePause(); Expedition.update(dt, ev); Expedition.render(ctx); }
+      else if (UI.mode === 'finale') { if (ev.esc) UI.togglePause(); Finale.update(dt, ev); Finale.render(ctx); }
       else if (UI.mode === 'game' && Game.L) {
         if (ev.esc) UI.togglePause();
         Game.update(dt, ev); Game.render(ctx);

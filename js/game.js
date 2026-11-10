@@ -128,8 +128,8 @@
   /* ================= SPIELABLAUF ================= */
   const Game = {
     VW, VH, hooks: {}, paused: false, get L() { return L; },
-    start(wid, resume) {
-      L = build(wid);
+    start(wid, resume, opts) {
+      L = build(wid); L.nightmare = !!(opts && opts.nightmare);
       L.baseShells = L.shells.length; L.basePearls = L.pearls.length;
       const th = L.W.theme;
       if (!bgCache[wid]) bgCache[wid] = Art.buildBackground(th, LH);
@@ -145,7 +145,8 @@
       L.d = { x: 200, y: 520, vx: 0, vy: 0, facing: 1, angle: 0, slapT: -1, slapCd: 0, slapDone: false, invuln: 0, t: 0, trail: [], trailT: 0, comp: { x: 120, y: 520 }, color: S.color, cos: Save.cosmetics(), jump: 0, lunge: -1 };
       L.cam = { x: 0, y: (LH - VH) / 2 };
       L.cp = { x: 200, y: 520 };
-      L.hearts = 3; L.time = 0; L.score = 0; L.shellsGot = 0; L.pearlsGot = 0; L.correct = 0; L.fails = 0; L.deaths = 0; L.knocks = 0;
+      L.maxHearts = L.nightmare ? 1 : 3; L.hearts = L.maxHearts; L.time = 0;
+      if (L.nightmare) L.enemies.forEach(e => { e.spd *= 1.45; if (e.type === 'piranha' || e.type === 'lantern') e.chase = true; e.range *= 1.2; }); L.score = 0; L.shellsGot = 0; L.pearlsGot = 0; L.correct = 0; L.fails = 0; L.deaths = 0; L.knocks = 0;
       L.state = 'title'; L.stateT = 0; L.t = 0; L.shake = 0; L.boss = null; L.bossStarted = false; L.magic = null;
       L.totalShells = L.shells.length;
       this.paused = false;
@@ -190,7 +191,7 @@
       const stars = 1 + (L.fails <= 1 ? 1 : 0) + (time <= W.par ? 1 : 0);
       const levelScore = L.score + 500 + timeBonus;
       const coins = L.shellsGot * 5 + L.pearlsGot * 25 + L.correct * 15 + 150 + (L.egg && L.egg.found ? 300 : 0);
-      return { knocks: L.knocks, egg: L.egg && L.egg.found ? L.egg.text : null, world: L.wid, name: W.name, time, timeBonus, shells: L.shellsGot, totalShells: L.totalShells, pearls: L.pearlsGot, correct: L.correct, fails: L.fails, score: levelScore, stars, coins, deaths: L.deaths };
+      return { nightmare: L.nightmare, knocks: L.knocks, egg: L.egg && L.egg.found ? L.egg.text : null, world: L.wid, name: W.name, time, timeBonus, shells: L.shellsGot, totalShells: L.totalShells, pearls: L.pearlsGot, correct: L.correct, fails: L.fails, score: levelScore, stars, coins, deaths: L.deaths };
     },
     render(ctx) { if (L) render(ctx); },
     // Spielstand mitten im Level: letzter Checkpoint + bereits gesammelte Dinge
@@ -249,7 +250,8 @@
     d.vx += ix * ACC * dt; d.vy += iy * ACC * dt;
     const drag = len > 0 ? (slip ? 0.6 : 1.4) : (slip ? 1.5 : 5.5);
     d.vx *= Math.exp(-drag * dt); d.vy *= Math.exp(-drag * dt);
-    let sp = Math.hypot(d.vx, d.vy); if (sp > MAXV) { d.vx *= MAXV / sp; d.vy *= MAXV / sp; }
+    d.dashT = (d.dashT || 0) - dt;
+    let sp = Math.hypot(d.vx, d.vy); if (sp > MAXV && d.dashT <= 0) { d.vx *= MAXV / sp; d.vy *= MAXV / sp; }
     for (const c of L.currents) if (d.x > c.x && d.x < c.x + c.w && d.y > c.y && d.y < c.y + c.h) { d.vx += c.fx * dt; d.vy += c.fy * dt; }
     if (ix) d.facing = ix > 0 ? 1 : -1;
     moveDolphin(dt);
@@ -259,7 +261,8 @@
     if (sp > 200 && Math.random() < dt * 8) addPart(d.x - d.facing * 50, d.y + (Math.random() - 0.5) * 10, 'bubble');
     if (sp > 260 && Math.random() < dt * 1.2) Sound.sfx('swim');
     // Flossenschlag
-    d.slapCd -= dt; d.invuln -= dt;
+    d.slapCd -= dt; d.invuln -= dt; d.dashCd = (d.dashCd || 0) - dt;
+    if (ev.dash && d.dashCd <= 0) { const dx = ix || iy ? ix : d.facing, dy = ix || iy ? iy : 0; d.vx = dx * 860; d.vy = dy * 860; d.dashCd = 1.2; d.dashT = 0.22; d.invuln = Math.max(d.invuln, 0.35); Sound.sfx('swim'); for (let i = 0; i < 8; i++) addPart(d.x - d.facing * 40, d.y, 'bubble'); }
     if (ev.action && d.slapCd <= 0) { d.slapT = 0; d.slapCd = SLAP_CD; d.slapDone = false; Sound.sfx('slap'); }
     if (d.slapT >= 0) {
       d.slapT += dt;
@@ -321,7 +324,7 @@
     if (L.hearts <= 0) { L.deaths++; Game.setState('dead'); Sound.sfx('wrong'); }
   }
   function respawn() {
-    const d = L.d; d.x = L.cp.x; d.y = L.cp.y; d.vx = d.vy = 0; d.invuln = 2; L.hearts = 3; d.trail = [];
+    const d = L.d; d.x = L.cp.x; d.y = L.cp.y; d.vx = d.vy = 0; d.invuln = 2; L.hearts = L.maxHearts; d.trail = [];
     L.enemies.forEach(e => { if (!e.knocked && Math.abs(e.hx - d.x) < 360) { e.x = e.hx; e.y = e.hy; } if (Math.abs(e.x - d.x) < 220 && Math.abs(e.y - d.y) < 220 && !e.knocked) { e.x = e.hx; e.y = e.hy; } });
     L.state = L.bossStarted && L.magic ? 'collect' : 'play'; L.stateT = 0;
     popup(d.x, d.y - 60, 'Zurück zum Checkpoint!', '#fff');
@@ -415,7 +418,7 @@
   function startBoss() {
     L.bossStarted = true; Game.setState('bossIntro');
     const A = L.arena.x; L.arena.wall.closing = true;
-    L.boss = { x: A + VW + 300, y: LH / 2 + 10, tx: A + VW - 300, ty: LH / 2 + 10, hp: L.W.hp, max: L.W.hp, hit: 0, defeat: 0, talk: false, lampOn: true };
+    L.boss = { x: A + VW + 300, y: LH / 2 + 10, tx: A + VW - 300, ty: LH / 2 + 10, hp: L.W.hp + (L.nightmare ? 2 : 0), max: L.W.hp + (L.nightmare ? 2 : 0), hit: 0, defeat: 0, talk: false, lampOn: true };
     Sound.sfx('bossAppear'); L.shake = 1;
   }
   function updateBoss(dt) {
@@ -579,6 +582,7 @@
       else if (pt === 'glow' || pt === 'spores') { ctx.fillStyle = pt === 'glow' ? 'rgba(160,255,240,0.5)' : 'rgba(220,255,160,0.45)'; ctx.beginPath(); ctx.arc(px + Math.sin(t + i) * 14, py, 2, 0, 7); ctx.fill(); }
       else { ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(px + Math.sin(t * 1.5 + i) * 6, py, 2 + i % 4, 0, 7); ctx.stroke(); }
     }
+    if (L.nightmare) { const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VW * 0.75); vg.addColorStop(0, 'rgba(90,0,30,0)'); vg.addColorStop(1, 'rgba(90,0,30,0.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, VW, VH); }
     drawHUD(ctx);
     // Titelkarte / Tod
     if (L.state === 'title') {
@@ -634,7 +638,7 @@
   function hudPill(ctx, x, y, w) { Art.rr(ctx, x, y, w, 46, 23); ctx.fillStyle = 'rgba(8,30,60,0.72)'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,210,90,0.85)'; ctx.stroke(); }
   function drawHUD(ctx) {
     ctx.save(); ctx.font = 'bold 26px Fredoka, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-    hudPill(ctx, 16, 14, 150); for (let i = 0; i < 3; i++) heart(ctx, 46 + i * 44, 39, 1.55, i < L.hearts);
+    hudPill(ctx, 16, 14, 150); for (let i = 0; i < L.maxHearts; i++) heart(ctx, 46 + i * 44, 39, 1.55, i < L.hearts); if (L.nightmare) { ctx.fillStyle = '#ff9aa6'; ctx.font = 'bold 16px Fredoka, sans-serif'; ctx.fillText('ALBTRAUM', 80, 39); ctx.font = 'bold 26px Fredoka, sans-serif'; }
     hudPill(ctx, 176, 14, 130); Art.drawShell(ctx, 204, 36, 0, 1.05); ctx.fillStyle = '#fff'; ctx.fillText(String(L.shellsGot), 228, 38);
     hudPill(ctx, 316, 14, 170); Art.star(ctx, 344, 37, 14, '#ffd23a'); ctx.fillStyle = '#fff'; ctx.fillText(MathGen.fmt(L.score), 366, 38);
     hudPill(ctx, 496, 14, 140); ctx.beginPath(); ctx.arc(522, 37, 13, 0, 7); Art.fillS(ctx, '#fff', 3, '#ffd23a'); ctx.beginPath(); ctx.moveTo(522, 37); ctx.lineTo(522, 29); ctx.moveTo(522, 37); ctx.lineTo(528, 40); Art.stroke(ctx, 2.5, '#0a2a4a');

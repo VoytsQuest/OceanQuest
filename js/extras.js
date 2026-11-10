@@ -14,6 +14,7 @@
     'trikot-blaurot': { kind: 'jersey', base: '#a50044', stripes: ['#1b3f94', 12, 12], trim: '#f6c700', num: '#f6c700', numOut: '#4a1028' },
     'trikot-schwarz': { kind: 'jersey', base: '#1c1c1f', stripes: null, trim: '#e1000f', trim2: '#ffffff', num: '#ffffff', numOut: '#e1000f' },
     'trikot-winner':   { kind: 'jersey', base: '#ffcf2a', stripes: ['#ffe680', 4, 9], trim: '#ffffff', num: '#ffffff', numOut: '#9a6a00', shine: true, numText: '1' },
+    'trikot-expedition': { kind: 'jersey', base: '#c8b07a', stripes: ['#b09a62', 3, 9], trim: '#2a6a4a', num: '#2a6a4a', numOut: '#f4ead0', numText: 'E' },
     'badeanzug-retro':  { kind: 'swim', base: '#ffffff', hstripes: '#e8323a' },
     'badeanzug-punkte': { kind: 'swim', base: '#ffd23a', dots: '#ffffff' }
   };
@@ -61,6 +62,8 @@
 
   /* ---------- Goldene Kette ---------- */
   function neck(c, id, t) {
+    if (id === 'haizahnkette') { c.save(); for (let i = 0; i <= 14; i++) { const k = i / 14; const x = 12 + Math.sin(k * Math.PI) * 9, y = -26 + k * 44; ell(c, x, y, 1.6, 1.6); c.fillStyle = '#6a4a2a'; c.fill(); if (i % 3 === 1) { c.beginPath(); c.moveTo(x - 3, y); c.lineTo(x + 6, y + 2); c.lineTo(x - 2, y + 4); c.closePath(); fs(c, '#fffbf0', 1.2, '#7a7a6a'); } } c.restore(); return; }
+    if (id === 'rettungsring') { c.save(); c.translate(14, -2); for (let i = 0; i < 8; i++) { c.beginPath(); c.ellipse(0, 0, 11, 26, 0, i / 8 * TAU, (i + 1) / 8 * TAU); c.lineWidth = 8; c.strokeStyle = i % 2 ? '#ffffff' : '#ff5a1a'; c.stroke(); } c.beginPath(); c.ellipse(0, 0, 15, 30, 0, 0, TAU); c.lineWidth = 1.4; c.strokeStyle = '#7a2a0a'; c.stroke(); c.restore(); return; }
     if (id !== 'goldkette') return;
     c.save(); const pts = []; for (let i = 0; i <= 14; i++) { const k = i / 14; pts.push([12 + Math.sin(k * Math.PI) * 9, -26 + k * 44]); }
     pts.forEach(([x, y], i) => { ell(c, x, y, 2.6, 1.9, i % 2 ? 0.6 : -0.6); fs(c, i % 2 ? '#ffd23a' : '#f0b400', 1, '#8a6200'); });
@@ -183,6 +186,12 @@
     { id: 'goldbrille', name: 'Goldene Brille', hint: 'Belohnung im Fußball-Modus', slot: 'eyes', price: 0, cat: 'Aussehen', reward: true },
     { id: 'goldkette', name: 'Goldene Kette', hint: 'Belohnung im Fußball-Modus', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
     { id: 'begleiter-fussballfisch', name: 'Fußball-Fisch', hint: 'Begleiter – Belohnung im Fußball-Modus', slot: 'companion', price: 0, cat: 'Begleiter', reward: true },
+    { id: 'haizahnkette', name: 'Haizahn-Kette', hint: 'Belohnung: Hai-Jagd', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'forscherhut', name: 'Forscherhut', hint: 'Belohnung: Riff-Erkundung', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'helmlampe', name: 'Helmlampe', hint: 'Belohnung: Tauchgang – macht dunkle Expeditionen heller', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'taucherflossen', name: 'Taucherflossen', hint: 'Belohnung: Vulkanflucht', slot: 'fins', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'rettungsring', name: 'Rettungsring', hint: 'Belohnung: Rettungsmission', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'trikot-expedition', name: 'Expeditions-Trikot', hint: 'Belohnung: Albtraum-Tiefsee', slot: 'body', price: 0, cat: 'Trikots', reward: true },
     { id: 'begleiter-babyhai', name: 'Baby-Hai', hint: 'Mit rosa Schnuller', slot: 'companion', price: 1600, cat: 'Begleiter' }
   ];
   root.ArtExtras = { neck, outfit, sleeve, wig, drawBuddy, ITEMS, OUTFITS };
