@@ -431,12 +431,12 @@
     ell(ctx, -5, -8, 3, 2); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
     ctx.restore();
   }
-  function drawPearl(ctx, x, y, t, r, magic) {
+  function drawPearl(ctx, x, y, t, r, magic, gold) {
     r = r || 11; const pulse = 1 + Math.sin(t * 4) * 0.08;
-    const g0 = ctx.createRadialGradient(x, y, 0, x, y, r * 3); g0.addColorStop(0, magic ? 'rgba(180,140,255,0.6)' : 'rgba(255,255,255,0.5)'); g0.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g0; ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+    const g0 = ctx.createRadialGradient(x, y, 0, x, y, r * 3); g0.addColorStop(0, gold ? 'rgba(255,210,60,0.6)' : magic ? 'rgba(180,140,255,0.6)' : 'rgba(255,255,255,0.5)'); g0.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g0; ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
     const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r * pulse);
-    if (magic) { g.addColorStop(0, '#ffffff'); g.addColorStop(0.4, '#d8b8ff'); g.addColorStop(1, '#7a4ad8'); } else { g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#f4eefc'); g.addColorStop(1, '#c8b8e0'); }
-    ell(ctx, x, y, r * pulse, r * pulse); fillS(ctx, g, 2, magic ? '#4a2a9a' : '#8a7aa8');
+    if (gold) { g.addColorStop(0, '#fffbe0'); g.addColorStop(0.45, '#ffd84a'); g.addColorStop(1, '#c88a00'); } else if (magic) { g.addColorStop(0, '#ffffff'); g.addColorStop(0.4, '#d8b8ff'); g.addColorStop(1, '#7a4ad8'); } else { g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#f4eefc'); g.addColorStop(1, '#c8b8e0'); }
+    ell(ctx, x, y, r * pulse, r * pulse); fillS(ctx, g, 2, gold ? '#8a5a00' : magic ? '#4a2a9a' : '#8a7aa8');
   }
   function drawChest(ctx, x, y, open, t) {
     ctx.save(); ctx.translate(x, y);

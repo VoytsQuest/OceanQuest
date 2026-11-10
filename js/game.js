@@ -8,8 +8,8 @@
   let L = null; let dark = null;
 
   /* ================= LEVELAUFBAU ================= */
-  function build(wid) {
-    const W = WORLDS[wid - 1], m = W.mech;
+  function build(wid, nightmare) {
+    const W = WORLDS[wid - 1], m = nightmare ? Object.assign({}, W.mech, { pillars: W.mech.pillars + 4, moving: W.mech.moving + 2, chase: 1 }) : W.mech;
     const r = Art.rng(wid * 7919 + 31);
     const R = (a, b) => a + r() * (b - a), pick = a => a[Math.floor(r() * a.length)];
     const L = { W, wid, solids: [], movers: [], crates: [], gates: [], switches: [], enemies: [], shells: [], pearls: [], chests: [], checkpoints: [], currents: [], vents: [], ink: [], lights: [], signs: [], weeds: [], schools: [], fx: [], parts: [] };
@@ -129,7 +129,7 @@
   const Game = {
     VW, VH, hooks: {}, paused: false, get L() { return L; },
     start(wid, resume, opts) {
-      L = build(wid); L.nightmare = !!(opts && opts.nightmare);
+      L = build(wid, opts && opts.nightmare); L.nightmare = !!(opts && opts.nightmare); L.huntT = 6;
       L.baseShells = L.shells.length; L.basePearls = L.pearls.length;
       const th = L.W.theme;
       if (!bgCache[wid]) bgCache[wid] = Art.buildBackground(th, LH);
@@ -146,6 +146,7 @@
       L.cam = { x: 0, y: (LH - VH) / 2 };
       L.cp = { x: 200, y: 520 };
       L.maxHearts = L.nightmare ? 1 : 3; L.hearts = L.maxHearts; L.time = 0;
+      if (L.nightmare) { const hunter = wid >= 7 ? 'lantern' : 'piranha'; for (let x = 1400; x < L.arena.x - 300; x += 650) L.enemies.push({ type: hunter, x, y: 250 + Math.random() * 500, hx: x, hy: 250 + Math.random() * 500, r: 20, big: false, invuln: false, seed: Math.random() * 10, range: 120, spd: 1, face: 1, vx: 0, vy: 0, chase: true, inkT: 3, t: Math.random() * 10, knocked: false, kt: 0, spin: 0, inflate: 0 }); }
       if (L.nightmare) L.enemies.forEach(e => { e.spd *= 1.45; if (e.type === 'piranha' || e.type === 'lantern') e.chase = true; e.range *= 1.2; }); L.score = 0; L.shellsGot = 0; L.pearlsGot = 0; L.correct = 0; L.fails = 0; L.deaths = 0; L.knocks = 0;
       L.state = 'title'; L.stateT = 0; L.t = 0; L.shake = 0; L.boss = null; L.bossStarted = false; L.magic = null;
       L.totalShells = L.shells.length;
@@ -370,13 +371,16 @@
         case 'crab': { const nx = e.hx + Math.sin(t * 1.2) * Math.min(e.range, 80); e.face = nx > e.x ? 1 : -1; e.x = nx; break; }
         case 'piranha': case 'lantern': {
           const dist = Math.hypot(d.x - e.x, d.y - e.y);
-          if (e.chase && control && dist < 380 && d.invuln <= 0) { const sp = 150 * e.spd; e.vx += (d.x - e.x) / dist * sp * 3 * dt; e.vy += (d.y - e.y) / dist * sp * 3 * dt; const v = Math.hypot(e.vx, e.vy); if (v > sp) { e.vx *= sp / v; e.vy *= sp / v; } }
+          if (e.chase && control && dist < (e.hunter ? 1100 : 380) && d.invuln <= 0) { const sp = 150 * e.spd; e.vx += (d.x - e.x) / dist * sp * 3 * dt; e.vy += (d.y - e.y) / dist * sp * 3 * dt; const v = Math.hypot(e.vx, e.vy); if (v > sp) { e.vx *= sp / v; e.vy *= sp / v; } }
           else { const tx = e.hx + Math.sin(t) * e.range, ty = e.hy + Math.sin(t * 1.6) * 20; e.vx += (tx - e.x) * dt * 2; e.vy += (ty - e.y) * dt * 2; e.vx *= Math.exp(-2 * dt); e.vy *= Math.exp(-2 * dt); }
           e.x += e.vx * dt; e.y += e.vy * dt; e.y = Math.max(CEIL + 30, Math.min(FLOOR - 30, e.y)); if (Math.abs(e.vx) > 5) e.face = e.vx > 0 ? 1 : -1; break;
         }
       }
       if (control && hits(e, d)) damage(e.x, e.y);
     }
+    // Albtraum: Jäger schwimmen von hinten heran
+    if (L.nightmare && control && L.state === 'play') { L.huntT -= dt; const hunters = L.enemies.filter(e => e.hunter && !e.knocked).length;
+      if (L.huntT <= 0 && hunters < 3) { L.huntT = 7 + Math.random() * 4; const hx = Math.max(60, L.cam.x - 80), hy = Math.max(CEIL + 60, Math.min(FLOOR - 60, d.y + (Math.random() - 0.5) * 200)); L.enemies.push({ type: L.wid >= 7 ? 'lantern' : 'piranha', x: hx, y: hy, hx, hy, r: 20, big: false, invuln: false, seed: Math.random() * 10, range: 100, spd: 1.35, face: 1, vx: 0, vy: 0, chase: true, hunter: true, inkT: 3, t: 0, knocked: false, kt: 0, spin: 0, inflate: 0 }); popup(d.x - 200, d.y - 60, 'Achtung – Jäger von hinten!', '#ff9aa6'); } }
     // Lavaschlote
     for (const v of L.vents) {
       const p = (L.t + v.ph) % v.period; v.active = p > v.period - 1.3; v.warn = p > v.period - 2.1 && !v.active; v.k = v.active ? Math.min(1, (p - (v.period - 1.3)) / 0.25) : 0;
@@ -535,8 +539,8 @@
     // Sammelobjekte
     for (const ch of L.chests) if (vis(ch.x - 60, 120)) Art.drawChest(ctx, ch.x, ch.y, ch.open, t);
     for (const s of L.shells) if (!s.got && vis(s.x - 20, 40)) { if (s.egg) { ctx.fillStyle = `rgba(255,240,150,${0.25 + 0.15 * Math.sin(t * 4 + s.x)})`; ctx.beginPath(); ctx.arc(s.x, s.y, 17, 0, 7); ctx.fill(); } Art.drawShell(ctx, s.x, s.y, t, 1); }
-    for (const p of L.pearls) if (!p.got && vis(p.x - 30, 60)) Art.drawPearl(ctx, p.x, p.y, t, 11);
-    if (L.magic && !L.magic.got) Art.drawPearl(ctx, L.magic.x, L.magic.y + Math.sin(t * 2) * 10, t, 26, true);
+    for (const p of L.pearls) if (!p.got && vis(p.x - 30, 60)) Art.drawPearl(ctx, p.x, p.y, t, 11, false, L.nightmare);
+    if (L.magic && !L.magic.got) Art.drawPearl(ctx, L.magic.x, L.magic.y + Math.sin(t * 2) * 10, t, 26, !L.nightmare, L.nightmare);
     // Gegner
     for (const e of L.enemies) if (vis(e.x - 120, 240)) Art.drawEnemy(ctx, e, t, L.wid);
     // Boss

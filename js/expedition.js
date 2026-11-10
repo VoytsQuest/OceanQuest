@@ -9,12 +9,12 @@
   let X = null, dark = null;
 
   const DEFS = [
-    { id: 'haijagd', name: 'Die Hai-Jagd', icon: '🦈', short: 'Bruno, der Riesenhai, ist hinter dir her! Schwimm durch das Tor mit dem richtigen Ergebnis – das gibt Tempo.', reward: 'haizahnkette', track: 2, theme: 1, medals: ['Ziel erreicht', '4 Tore richtig', 'Alle 6 Tore richtig, höchstens 1 Treffer'] },
-    { id: 'riff', name: 'Riff-Erkundung', icon: '🧭', short: 'Erkunde ein riesiges Riff in alle Richtungen. Öffne Zahlenschlösser, finde Geheimgänge und entdecke Meerestiere fürs Lexikon.', reward: 'forscherhut', track: 3, theme: 1, medals: ['3 Schätze', '8 Schätze', 'Alle 10 Schätze + 12 Meerestiere'] },
-    { id: 'tauchgang', name: 'Tauchgang in die Tiefe', icon: '🫧', short: 'Tauche bis zum Meeresgrund. Luftblasen füllen deinen Sauerstoff auf, Luftstationen öffnest du mit Sachaufgaben.', reward: 'helmlampe', track: 7, theme: 7, medals: ['Meeresgrund erreicht', 'Höchstens 2 Herzen verloren', 'Kein Herz verloren, alle Stationen beim 1. Versuch'] },
-    { id: 'vulkan', name: 'Vulkanflucht', icon: '🌋', short: 'Unter dir steigt die Lava! Räum Felsbrocken weg, löse Schalterketten und Lava-Schlösser und flieh nach oben.', reward: 'taucherflossen', track: 4, theme: 8, medals: ['Entkommen', 'Höchstens 3 Treffer', 'Höchstens 1 Treffer'] },
-    { id: 'rettung', name: 'Rettungsmission', icon: '🛟', short: 'Befreie sechs Meerestiere aus Fischernetzen und bring die Babyschildkröte Tilda sicher an den Strand.', reward: 'rettungsring', track: 1, theme: 2, medals: ['Tilda gerettet', 'Wenige Fehler, Tilda höchstens 1× getroffen', 'Fast fehlerfrei, Tilda unverletzt'] },
-    { id: 'albtraum', name: 'Albtraum-Tiefsee', icon: '💀', short: 'Die 8 Welten als Profi-Version: nur 1 Herz, schnellere Gegner, schwerere Aufgaben.', reward: 'trikot-expedition', track: 4, theme: 8, medals: ['2 Albtraum-Welten', '5 Albtraum-Welten', 'Alle 8 Albtraum-Welten'] }
+    { id: 'haijagd', pal: { top: '#3a9ad0', bottom: '#0c1e4a', farCol: '#24508a', midCol: '#1a3e70', rock: ['#8a7a9a', '#4a3a5a'], cap: 'coral', far: 'coral', particles: 'bubbles', floor: '#b8a8c8' }, name: 'Die Hai-Jagd', icon: '🦈', short: 'Bruno, der Riesenhai, ist hinter dir her! Schwimm durch das Tor mit dem richtigen Ergebnis – das gibt Tempo.', reward: 'haizahnkette', track: 11, theme: 1, medals: ['Ziel erreicht', '4 Tore richtig', 'Alle 6 Tore richtig, höchstens 1 Treffer'] },
+    { id: 'riff', pal: { top: '#5ae8d8', bottom: '#1a8aa8', farCol: '#3ab8c0', midCol: '#2aa0b0', rock: ['#f0a07a', '#c86a5a'], cap: 'coral', far: 'coral', particles: 'bubbles', floor: '#fbe6b0' }, name: 'Riff-Erkundung', icon: '🧭', short: 'Erkunde ein riesiges Riff in alle Richtungen. Öffne Zahlenschlösser, finde Geheimgänge und entdecke Meerestiere fürs Lexikon.', reward: 'forscherhut', track: 12, theme: 1, medals: ['3 Schätze', '8 Schätze', 'Alle 10 Schätze + 12 Meerestiere'], rewardNote: 'Forscherhut: alle 12 Meerestiere entdecken' },
+    { id: 'tauchgang', pal: { top: '#2a7ab8', bottom: '#020818', farCol: '#123a6a', midCol: '#0c2a52', rock: ['#3a4a6a', '#18223a'], cap: 'biolum', far: 'deep', particles: 'glow', floor: '#1d2a44' }, name: 'Tauchgang in die Tiefe', icon: '🫧', short: 'Tauche bis zum Meeresgrund. Luftblasen füllen deinen Sauerstoff auf, Luftstationen öffnest du mit Sachaufgaben.', reward: 'helmlampe', track: 13, theme: 7, medals: ['Meeresgrund erreicht', 'Höchstens 2 Herzen verloren', 'Kein Herz verloren, alle Stationen beim 1. Versuch'] },
+    { id: 'vulkan', name: 'Vulkanflucht', icon: '🌋', short: 'Unter dir steigt die Lava! Räum Felsbrocken weg, löse Schalterketten und Lava-Schlösser und flieh nach oben.', reward: 'taucherflossen', track: 14, theme: 8, medals: ['Entkommen', 'Höchstens 3 Treffer', 'Höchstens 1 Treffer'] },
+    { id: 'rettung', pal: { top: '#7ae0b0', bottom: '#14607a', farCol: '#3a9a8a', midCol: '#2a8a7a', rock: ['#c8b07a', '#8a7048'], cap: 'moss', far: 'jungle', particles: 'bubbles', floor: '#f0dca0' }, name: 'Rettungsmission', icon: '🛟', short: 'Befreie sechs Meerestiere aus Fischernetzen und bring die Babyschildkröte Tilda sicher an den Strand.', reward: 'rettungsring', track: 15, theme: 2, medals: ['Tilda gerettet', 'Wenige Fehler, Tilda höchstens 1× getroffen', 'Fast fehlerfrei, Tilda unverletzt'] },
+    { id: 'albtraum', name: 'Albtraum-Tiefsee', icon: '💀', short: 'Die 8 Welten als Profi-Version: nur 1 Herz, schnellere Gegner, schwerere Aufgaben.', reward: 'trikot-expedition', track: 8, theme: 8, medals: ['2 Albtraum-Welten', '5 Albtraum-Welten', 'Alle 8 Albtraum-Welten'], rewardNote: 'Forschertrikot: alle 8 Albtraum-Welten schaffen' }
   ];
   const CREATURES = [
     { id: 'oktopus', name: 'Oktopus', fact: 'Ein Oktopus hat drei Herzen und blaues Blut. Mit seinen Armen kann er sogar schmecken!' },
@@ -30,6 +30,15 @@
     { id: 'papageifisch', name: 'Papageifisch', fact: 'Papageifische knabbern an Korallen. Was sie wieder ausscheiden, wird zu feinem weißem Sand.' },
     { id: 'muraene', name: 'Muräne', fact: 'Muränen haben im Hals ein zweites Kiefer, mit dem sie ihre Beute nach hinten ziehen.' }
   ];
+
+  const THANKS = {
+    schildkroete: ['Endlich frei! Jetzt aber schnell – also, schnell für eine Schildkröte.', 'Danke! Ich war schon 100 Jahre hier drin … gefühlt.'],
+    seepferdchen: ['Hüa! Ich galoppiere davon!', 'Danke! Ich wieher dir ein Ständchen: Blubb-hihihi!'],
+    oktopus: ['Acht Arme und trotzdem verheddert – wie peinlich!', 'Danke! Ich gebe dir acht High-Fives auf einmal!'],
+    clownfisch: ['Danke! Ich bin übrigens der Lustigste im ganzen Riff!', 'Frei! Zeit für einen Witz: Was macht ein Fisch am Computer? Er geht ins Netz!'],
+    kugelfisch: ['Puh! Ich war schon ganz aufgeblasen vor Aufregung!', 'Danke! Jetzt kann ich endlich wieder Luft ablassen. Pffffft!'],
+    einsiedler: ['Frei! Und mein Haus hab ich auch noch dabei!', 'Danke! Komm mich mal besuchen – ich ziehe aber ständig um.']
+  };
 
   /* ================= Hilfen ================= */
   function rng(seed) { return Art.rng(seed); }
@@ -60,7 +69,7 @@
   /* ================= Aufbau der Expeditionen ================= */
   const BUILD = {
     haijagd() {
-      const W = 9800, H = 900, CEIL = 40, FLOOR = 860, r = rng(11); X.W = W; X.H = H; walls(W, H, 40);
+      const W = 9800, H = 900, CEIL = 40, FLOOR = 860, r = rng(11); X.says = []; X.W = W; X.H = H; walls(W, H, 40);
       X.cam = { x: 0, y: 90 }; X.d.x = 420; X.d.y = 450; X.cp = { x: 420, y: 450 };
       let x = 900; X.gates = []; let gi = 0;
       while (x < W - 900) {
@@ -140,7 +149,7 @@
       X.rockSpawns.push({ x: -1, every: 2.6, t: 0 }); X.goal = { x: W / 2, y: 260 }; X.lavaHits = 0;
     },
     rettung() {
-      const W = 7400, H = 900, CEIL = 40, FLOOR = 860, r = rng(71); X.W = W; X.H = H; walls(W, H, 40);
+      const W = 7400, H = 900, CEIL = 40, FLOOR = 860, r = rng(71); X.says = []; X.W = W; X.H = H; walls(W, H, 40);
       X.d.x = 260; X.d.y = 450; X.cp = { x: 260, y: 450 }; X.nets = []; X.mistakes = 0;
       const animals = ['schildkroete', 'seepferdchen', 'oktopus', 'clownfisch', 'kugelfisch', 'einsiedler'];
       for (let i = 0; i < 6; i++) {
@@ -162,7 +171,7 @@
     DEFS, CREATURES, hooks: {}, active: false, paused: false,
     get X() { return X; },
     start(id) {
-      const def = DEFS.find(d => d.id === id); const theme = WORLDS[def.theme - 1].theme;
+      const def = DEFS.find(d => d.id === id); const theme = def.pal ? Object.assign({ rays: 0.3 }, def.pal) : WORLDS[def.theme - 1].theme;
       X = { def, id, theme, solids: [], enemies: [], shells: [], grass: [], currents: [], rockSpawns: [], rocks: [], parts: [], fx: [], cps: [], hearts: 3, maxHearts: 3, hits: 0, deaths: 0, t: 0, time: 0, state: 'title', st: 0, score: 0, shellsGot: 0, coins: 0,
         d: { x: 0, y: 0, vx: 0, vy: 0, facing: 1, angle: 0, slapT: -1, slapCd: 0, slapDone: false, dashT: 0, dashCd: 0, invuln: 0, t: 0, trail: [], hidden: false, boostT: 0, slowT: 0, comp: { x: 0, y: 0 } }, cam: { x: 0, y: 0 } };
       BUILD[id]();
@@ -247,7 +256,7 @@
   function knotTask(n, k) {
     ask(MathGen.generate(1 + Math.floor(Math.random() * 3)), first => {
       if (!first) X.mistakes++; k.ok = true; Sound.sfx('switch'); part(k.x, k.y, 'spark', 8);
-      if (n.knots.every(q => q.ok)) { n.free = true; X.freed++; X.score += 150; Sound.sfx('pearl'); popup(n.x, n.y - 100, 'Befreit! Danke!', '#7affb0'); part(n.x, n.y, 'star', 16); }
+      if (n.knots.every(q => q.ok)) { n.free = true; X.freed++; X.score += 150; Sound.sfx('pearl'); part(n.x, n.y, 'star', 16); const L = THANKS[n.animal]; X.says.push({ n, text: L[Math.floor(Math.random() * L.length)], t: 0 }); }
     });
   }
 
@@ -312,7 +321,8 @@
     },
     rettung(dt, play) {
       const d = X.d, T = X.tilda;
-      for (const n of X.nets) if (n.free) { n.fy -= 60 * dt; }
+      for (const n of X.nets) if (n.free) { n.fy -= 45 * dt; }
+      for (let i = X.says.length - 1; i >= 0; i--) { X.says[i].t += dt; if (X.says[i].t > 4) X.says.splice(i, 1); }
       for (const c of X.cps) if (!c.active && d.x > c.x) { c.active = true; X.cp = { x: c.x, y: c.y }; Sound.sfx('checkpoint'); popup(c.x, c.y - 60, 'Checkpoint! Tilda wartet auf dich.', '#5affb0'); }
       const dist = Math.hypot(d.x - T.x, d.y - T.y);
       if (!T.active && dist < 220) { T.active = true; Sound.sfx('unlock'); popup(T.x, T.y - 60, 'Tilda: „Bringst du mich zum Strand?“', '#fff'); }
@@ -510,6 +520,9 @@
         Art.drawEnemy(ctx, Object.assign({}, e, { type: 'bigfish', r: 40 }), t); continue; }
       Art.drawEnemy(ctx, e, t);
     }
+    // Sprechblasen der befreiten Tiere
+    if (X.says) for (const s of X.says) { const x = s.n.x, y = s.n.y + s.n.fy - 80; ctx.font = 'bold 18px Fredoka, sans-serif'; const words = s.text.split(' '); const lines = []; let ln = ''; words.forEach(w => { if (ctx.measureText(ln + ' ' + w).width > 260) { lines.push(ln); ln = w; } else ln = ln ? ln + ' ' + w : w; }); lines.push(ln);
+      const bw = Math.max(...lines.map(l => ctx.measureText(l).width)) + 30, bh = lines.length * 22 + 18; ctx.globalAlpha = Math.min(1, (4 - s.t) * 2); Art.rr(ctx, x - bw / 2, y - bh, bw, bh, 14); Art.fillS(ctx, '#fff', 3, '#2a6a4a'); ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x, y + 14); ctx.lineTo(x + 8, y); ctx.fillStyle = '#fff'; ctx.fill(); ctx.fillStyle = '#1a3a2a'; ctx.textAlign = 'center'; lines.forEach((l, i) => ctx.fillText(l, x, y - bh + 26 + i * 22)); ctx.globalAlpha = 1; }
     // Tilda
     if (X.tilda) { const T = X.tilda; if (!(T.inv > 0 && Math.floor(t * 20) % 2)) { ctx.save(); ctx.translate(T.x, T.y); ctx.scale(1.3, 1.3); Art.drawTurtle(ctx, 0, 0, t, T.vx < -5 ? -1 : 1); ctx.restore(); } ctx.font = 'bold 16px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText('Tilda ' + '❤'.repeat(Math.max(0, T.hp)), T.x, T.y - 34); }
     // Delfin

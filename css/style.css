@@ -313,7 +313,7 @@ kbd.wide { min-width: 120px; }
 .warmpanel { position: absolute; left: 120px; right: 120px; top: 120px; bottom: 20px; display: flex; flex-direction: column; border-color: #2aa85a; box-shadow: 0 0 0 3px #0a5a24, 0 14px 40px rgba(0,0,0,.5); }
 .vsrow { display: flex; justify-content: center; }
 .rewardbox { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 10px auto; padding: 8px 16px; background: rgba(255,210,58,.3); border: 2px dashed #b8860b; border-radius: 14px; text-align: left; font-size: 19px; }
-.price.rwd { background: linear-gradient(#5ae88a, #1a8a42); color: #fff; font-size: 15px; }
+.price.rwd { background: linear-gradient(#5ae88a, #1a8a42); color: #fff; font-size: 15px; white-space: nowrap; }
 .checks.req li.no::before { content: '✘'; color: var(--bad); }
 
 /* ---------- Fußball-Duell ---------- */

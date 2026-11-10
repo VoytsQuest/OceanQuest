@@ -6,10 +6,14 @@
     { file: 'assets/music/deep-currents.mp3', title: 'Deep Currents' },
     { file: 'assets/music/deep-reflections.mp3', title: 'Deep Reflections' },
     { file: 'assets/music/whale-call-at-dawn-2.mp3', title: 'Whale Call at Dawn II' },
-    { file: 'assets/music/deep-reflections-2.mp3', title: 'Deep Reflections II' }
+    { file: 'assets/music/deep-reflections-2.mp3', title: 'Deep Reflections II' },
+    { file: 'assets/music/ocean-quest.mp3', title: 'Ocean Quest' },
+    { file: 'assets/music/ocean-breeze.mp3', title: 'Ocean Breeze' },
+    { file: 'assets/music/whale-calling.mp3', title: 'Whale Calling' },
+    { file: 'assets/music/whale-call-nostalgia.mp3', title: 'Whale Call Nostalgia' }
   ];
   // Jede Welt startet mit ihrer eigenen Stimmung (Taste M schaltet jederzeit weiter)
-  const WORLD_TRACK = { 0: 0, 1: 3, 2: 1, 3: 2, 4: 4, 5: 0, 6: 1, 7: 2, 8: 4, 9: 3, 10: 2 };
+  const WORLD_TRACK = { 0: 5, 1: 6, 2: 1, 3: 2, 4: 4, 5: 0, 6: 7, 7: 2, 8: 4, 9: 5, 10: 8, 11: 7, 12: 6, 13: 8, 14: 1, 15: 3 };
 
   const A = {
     TRACKS, ctx: null, el: null, idx: 0, unlocked: false, music: true, sfxOn: true, musicVol: 0.55, sfxVol: 0.8, onChange: null, _fade: null,

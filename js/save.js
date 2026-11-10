@@ -21,7 +21,7 @@
     { id: 'schildkroete', name: 'Mini-Begleiter', slot: 'companion', price: 1600, cat: 'begleiter' }
   ];
   const CATMAP = { 'Aussehen': 'aussehen', 'Trikots': 'trikots', 'Badeanzüge': 'baden', 'Perücken': 'perruecken', 'Begleiter': 'begleiter' };
-  if (root.ArtExtras) root.ArtExtras.ITEMS.forEach(i => ITEMS.push({ id: i.id, name: i.name, hint: i.hint, slot: i.slot, price: i.price, cat: CATMAP[i.cat], premium: !!i.premium, reward: !!i.reward }));
+  if (root.ArtExtras) root.ArtExtras.ITEMS.forEach(i => ITEMS.push({ id: i.id, name: i.name, hint: i.hint, slot: i.slot, price: i.price, cat: CATMAP[i.cat], premium: !!i.premium, reward: !!i.reward, short: i.short }));
   const SLOTS = ['head', 'eyes', 'skin', 'fins', 'body', 'hair', 'neck', 'trail', 'companion'];
   const COLORS = ['blau', 'rosa', 'gruen', 'lila', 'gelb'];
 
@@ -60,6 +60,7 @@
     if (raw.exam && typeof raw.exam === 'object') d.exam = { unlocked: bool(raw.exam.unlocked, false), passed: bool(raw.exam.passed, false), best: Math.round(num(raw.exam.best, 0, 0, 15)), date: str(raw.exam.date, null, 30), score: str(raw.exam.score, '', 10) };
     if (d.defeated[7]) d.exam.unlocked = true;
     if (Array.isArray(raw.owned)) d.owned = raw.owned.filter(id => ITEMS.some(i => i.id === id));
+    if (d.exam.passed && !d.owned.includes('trikot-igs')) d.owned.push('trikot-igs');
     if (raw.equipped && typeof raw.equipped === 'object') SLOTS.forEach(s => { const id = raw.equipped[s]; d.equipped[s] = d.owned.includes(id) && ITEMS.find(i => i.id === id).slot === s ? id : null; });
     if (raw.settings && typeof raw.settings === 'object') {
       const s = raw.settings; d.settings = { music: bool(s.music, true), sfx: bool(s.sfx, true), musicVol: num(s.musicVol, 0.55, 0, 1), sfxVol: num(s.sfxVol, 0.8, 0, 1), touch: ['auto', 'an', 'aus'].includes(s.touch) ? s.touch : 'auto' };

@@ -14,6 +14,7 @@
     'trikot-blaurot': { kind: 'jersey', base: '#a50044', stripes: ['#1b3f94', 12, 12], trim: '#f6c700', num: '#f6c700', numOut: '#4a1028' },
     'trikot-schwarz': { kind: 'jersey', base: '#1c1c1f', stripes: null, trim: '#e1000f', trim2: '#ffffff', num: '#ffffff', numOut: '#e1000f' },
     'trikot-winner':   { kind: 'jersey', base: '#ffcf2a', stripes: ['#ffe680', 4, 9], trim: '#ffffff', num: '#ffffff', numOut: '#9a6a00', shine: true, numText: '1' },
+    'trikot-igs': { kind: 'jersey', base: '#ff8a1a', stripes: ['#a8f070', 6, 10], trim: '#a8f070', num: '#ffffff', numOut: '#c85a00', numText: 'IGS' },
     'trikot-expedition': { kind: 'jersey', base: '#c8b07a', stripes: ['#b09a62', 3, 9], trim: '#2a6a4a', num: '#2a6a4a', numOut: '#f4ead0', numText: 'E' },
     'badeanzug-retro':  { kind: 'swim', base: '#ffffff', hstripes: '#e8323a' },
     'badeanzug-punkte': { kind: 'swim', base: '#ffd23a', dots: '#ffffff' }
@@ -29,7 +30,7 @@
       const sh = c.createLinearGradient(0, -28, 0, 22); sh.addColorStop(0, 'rgba(0,0,0,0.18)'); sh.addColorStop(0.45, 'rgba(255,255,255,0.10)'); sh.addColorStop(1, 'rgba(0,0,0,0.22)'); c.fillStyle = sh; c.fillRect(-30, -40, 60, 72);
       c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-12, -20); c.quadraticCurveTo(-8, 0, -14, 18); c.moveTo(8, -22); c.quadraticCurveTo(4, -4, 10, 16); c.stroke();
       if (o.shine) { const g = c.createLinearGradient(-20, -30, 20, 20); g.addColorStop(0.35, 'rgba(255,240,190,0)'); g.addColorStop(0.5, `rgba(255,236,160,${0.35 + 0.25 * Math.sin(t * 3)})`); g.addColorStop(0.65, 'rgba(255,240,190,0)'); c.fillStyle = g; c.fillRect(-30, -40, 60, 72); }
-      c.font = 'bold 15px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = o.numOut; c.strokeText(o.numText || '10', -4, 3); c.fillStyle = o.num; c.fillText(o.numText || '10', -4, 3);
+      c.font = `bold ${(o.numText || '10').length > 2 ? 11 : 15}px Fredoka, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = o.numOut; c.strokeText(o.numText || '10', -4, 3); c.fillStyle = o.num; c.fillText(o.numText || '10', -4, 3);
       c.restore();
       // Kragen (vorn) und Saum (hinten)
       c.lineCap = 'round';
@@ -182,16 +183,17 @@
     { id: 'begleiter-ente', name: 'Quietsche-Ente', hint: 'Hat sich irgendwie ins Meer verirrt', slot: 'companion', price: 1200, cat: 'Begleiter' },
     { id: 'begleiter-krabbe', name: 'Coole Krabbe', hint: 'Sonnenbrille, winkt mit der Schere', slot: 'companion', price: 1300, cat: 'Begleiter' },
     { id: 'begleiter-kugelfisch', name: 'Pump-Kugelfisch', hint: 'Bläst sich alle paar Sekunden auf', slot: 'companion', price: 1500, cat: 'Begleiter' },
-    { id: 'trikot-winner', name: 'Winner-Trikot', hint: 'Goldenes Siegertrikot – Belohnung im Fußball-Modus', slot: 'body', price: 0, cat: 'Trikots', reward: true },
-    { id: 'goldbrille', name: 'Goldene Brille', hint: 'Belohnung im Fußball-Modus', slot: 'eyes', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'goldkette', name: 'Goldene Kette', hint: 'Belohnung im Fußball-Modus', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'begleiter-fussballfisch', name: 'Fußball-Fisch', hint: 'Begleiter – Belohnung im Fußball-Modus', slot: 'companion', price: 0, cat: 'Begleiter', reward: true },
-    { id: 'haizahnkette', name: 'Haizahn-Kette', hint: 'Belohnung: Hai-Jagd', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'forscherhut', name: 'Forscherhut', hint: 'Belohnung: Riff-Erkundung', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'helmlampe', name: 'Helmlampe', hint: 'Belohnung: Tauchgang – macht dunkle Expeditionen heller', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'taucherflossen', name: 'Taucherflossen', hint: 'Belohnung: Vulkanflucht', slot: 'fins', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'rettungsring', name: 'Rettungsring', hint: 'Belohnung: Rettungsmission', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
-    { id: 'trikot-expedition', name: 'Expeditions-Trikot', hint: 'Belohnung: Albtraum-Tiefsee', slot: 'body', price: 0, cat: 'Trikots', reward: true },
+    { id: 'trikot-winner', short: 'Fußball-Liga', name: 'Winner-Trikot', hint: 'Goldenes Siegertrikot – Belohnung im Fußball-Modus', slot: 'body', price: 0, cat: 'Trikots', reward: true },
+    { id: 'goldbrille', short: 'Fußball-Liga', name: 'Goldene Brille', hint: 'Belohnung im Fußball-Modus', slot: 'eyes', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'goldkette', short: 'Fußball-Liga', name: 'Goldene Kette', hint: 'Belohnung im Fußball-Modus', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'begleiter-fussballfisch', short: 'Fußball-Liga', name: 'Fußball-Fisch', hint: 'Begleiter – Belohnung im Fußball-Modus', slot: 'companion', price: 0, cat: 'Begleiter', reward: true },
+    { id: 'trikot-igs', short: 'Spiel durchgespielt', name: 'IGS-Trikot', hint: 'Belohnung: das Spiel durchgespielt (Finale gegen Mbappé gewonnen)', slot: 'body', price: 0, cat: 'Trikots', reward: true },
+    { id: 'haizahnkette', short: 'Hai-Jagd', name: 'Haizahn-Kette', hint: 'Belohnung: Hai-Jagd', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'forscherhut', short: 'alle 12 Riff-Tiere', name: 'Forscherhut', hint: 'Belohnung: alle 12 Meerestiere bei der Riff-Erkundung entdecken', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'helmlampe', short: 'Tauchgang', name: 'Helmlampe', hint: 'Belohnung: Tauchgang – macht dunkle Expeditionen heller', slot: 'head', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'taucherflossen', short: 'Vulkanflucht', name: 'Taucherflossen', hint: 'Belohnung: Vulkanflucht', slot: 'fins', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'rettungsring', short: 'Rettungsmission', name: 'Rettungsring', hint: 'Belohnung: Rettungsmission', slot: 'neck', price: 0, cat: 'Aussehen', reward: true },
+    { id: 'trikot-expedition', short: 'Albtraum geschafft', name: 'Forschertrikot', hint: 'Belohnung: alle 8 Welten im Albtraum-Modus geschafft', slot: 'body', price: 0, cat: 'Trikots', reward: true },
     { id: 'begleiter-babyhai', name: 'Baby-Hai', hint: 'Mit rosa Schnuller', slot: 'companion', price: 1600, cat: 'Begleiter' }
   ];
   root.ArtExtras = { neck, outfit, sleeve, wig, drawBuddy, ITEMS, OUTFITS };

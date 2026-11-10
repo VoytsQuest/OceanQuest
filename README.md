@@ -47,17 +47,19 @@ Spieler 1 (links): W A S D + Leertaste (Sprint) · Spieler 2 (rechts): Pfeiltast
 Auf dem iPad zieht jeder mit dem Finger auf seiner Spielfeldhälfte – beide gleichzeitig.
 
 ## Expeditionen (Abenteuer-Modus)
-Öffnet sich, wenn alle anderen Modi geschafft sind (inkl. aller 8 Fußball-Stadien). Sechs Expeditionen mit je Bronze/Silber/Gold:
+Direkt im Hauptmenü (neben dem Mathe-Contest) und sofort spielbar. Sechs Expeditionen mit je eigener Farbwelt und Bronze/Silber/Gold:
 1. **Die Hai-Jagd** – Bruno jagt dich, das Bild scrollt automatisch; Rechentore mit drei Ergebnissen (richtig = Turbo).
 2. **Riff-Erkundung** – offenes Riff mit Mini-Karte, 10 Schätze mit Zahlenschlössern (3 hinter Geheimwänden), 12 Meerestiere fürs Lexikon.
 3. **Tauchgang in die Tiefe** – senkrecht nach unten, Sauerstoffanzeige, Luftstationen mit Sachaufgaben, zunehmende Dunkelheit.
 4. **Vulkanflucht** – steigende Lava, Felsbrocken wegschieben, Doppelschalter, Lava-Schlösser (Lava pausiert bei Aufgaben).
 5. **Rettungsmission** – Netzknoten lösen (je eine Aufgabe), danach Babyschildkröte Tilda sicher zum Strand bringen.
-6. **Albtraum-Tiefsee** – die 8 Welten mit nur 1 Herz, schnelleren Gegnern, schwereren Aufgaben, Boss mit 2 Fragen mehr.
+6. **Albtraum-Tiefsee** – die 8 Welten mit nur 1 Herz, längeren Levels, mehr Verfolgern und Jägern von hinten, goldenen Perlen, schwereren Aufgaben, Boss mit 2 Fragen mehr.
 
 Neue Bewegungen: **Dash** (Umschalt oder K, auf dem iPad eigener Knopf) mit kurzer Unverwundbarkeit, **Verstecken im Seegras**,
 Barrakudas mit erkennbarem Angriffsmuster (rotes Leuchten vor dem Angriff), Steinschlag mit Schatten-Vorwarnung.
-Belohnungen: Haizahn-Kette, Forscherhut, Helmlampe (macht dunkle Level heller), Taucherflossen, Rettungsring, Expeditions-Trikot.
+Befreite Tiere bei der Rettungsmission bedanken sich mit lustigen Sprüchen.
+Belohnungen: Haizahn-Kette, Forscherhut (alle 12 Riff-Tiere entdeckt), Helmlampe (macht dunkle Level heller), Taucherflossen, Rettungsring, Forschertrikot (alle 8 Albtraum-Welten geschafft).
+Wer das Hauptspiel (Finale gegen Mbappé) gewinnt, bekommt das orange-hellgrüne **IGS-Trikot**.
 Meeres-Lexikon mit 12 Tieren und echten Fakten, Expeditions-Urkunde.
 
 ## Spielzeit-Limit
@@ -70,7 +72,7 @@ Drei druckbare Urkunden (auch als PDF): Spiel durchgespielt (mit richtigen/falsc
 Mathe-Contest und Fußball-Modus.
 
 ## Musik
-`assets/music/` enthält die 5 eigenen Tracks (Whale Call at Dawn I/II, Deep Currents, Deep Reflections I/II).
+`assets/music/` enthält die 9 eigenen Tracks (Whale Call at Dawn I/II, Deep Currents, Deep Reflections I/II, Ocean Quest, Ocean Breeze, Whale Calling, Whale Call Nostalgia).
 Jede Welt startet mit eigener Stimmung, nach Trackende geht es automatisch weiter. Musik startet erst nach der
 ersten Nutzerinteraktion (Browser-Regel) und ist in den Einstellungen abschaltbar. Weitere Tracks: Datei in
 `assets/music/` legen und in `js/audio.js` → `TRACKS` eintragen.

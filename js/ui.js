@@ -144,7 +144,8 @@
       case 'duelfig': { const [pl, i] = arg.split(':'); DUEL[pl] = +i; ui.querySelectorAll(`.figtile[data-pl="${pl}"]`).forEach(b => b.classList.toggle('sel', +b.dataset.i === +i)); Sound.sfx('switch'); updateDuelBar(); break; }
       case 'duelwin': DUEL.win = +arg; ui.querySelectorAll('.winbtn').forEach(b => b.classList.toggle('sel', +b.dataset.arg === DUEL.win)); break;
       case 'duelgo': Finale.paused = false; startDuel(); break;
-      case 'expeditions': if (duelOpen()) show('expmap'); else overlay(`<div class="panel"><h2>🧭 Expeditionen</h2><p>Die Expeditionen öffnen sich, wenn du <b>alle Modi</b> freigeschaltet hast – also auch alle 8 Stadien im Fußball-Modus gewonnen.</p><p>Fußball-Liga bisher: <b>${S().football.won.filter(Boolean).length} von 8</b></p><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
+      case 'expeditions': if (S().created) show('expmap'); else { toast('Erstelle zuerst einen Delfin!'); show('slots'); } break;
+      case 'expeditionsold': if (duelOpen()) show('expmap'); else overlay(`<div class="panel"><h2>🧭 Expeditionen</h2><p>Die Expeditionen öffnen sich, wenn du <b>alle Modi</b> freigeschaltet hast – also auch alle 8 Stadien im Fußball-Modus gewonnen.</p><p>Fußball-Liga bisher: <b>${S().football.won.filter(Boolean).length} von 8</b></p><div class="row"><button class="btn gold" data-act="closeov" data-default>Alles klar!</button></div></div>`); break;
       case 'expstart': Expedition.paused = false; closeOverlay(); if (arg === 'albtraum') show('nightmare'); else startExpedition(arg); break;
       case 'expgo': { const X = Expedition.X; if (X) X.intro = false; Expedition.paused = false; closeOverlay(); break; }
       case 'expquit': Expedition.paused = false; Expedition.stop(); Game.stop(); closeOverlay(); Sound.forWorld(0); show('expmap'); break;
@@ -159,7 +160,7 @@
   }
 
   function startWorld(w, resume, opts) {
-    if (w > S().unlocked) { toast('Diese Welt ist noch gesperrt.'); return; }
+    if (w > S().unlocked && !(opts && opts.nightmare)) { toast('Diese Welt ist noch gesperrt.'); return; }
     mode = 'game'; screen = 'game'; ui.innerHTML = ''; ui.className = 'ingame';
     Game.start(w, resume, opts); updateChrome();
     if (resume) setTimeout(() => toast('💾 Weiter am Checkpoint in Welt ' + w), 400);
@@ -182,9 +183,9 @@
         <button class="btn" data-act="continue" ${has ? 'data-default' : 'disabled'}>⟳ Fortsetzen${has && S().resume ? ' · Welt ' + S().resume.world : ''}</button>
         <button class="btn" data-act="goto" data-arg="slots">💾 Spielstände</button>
         <button class="btn contestbtn" data-act="contest">🎤 Mathe-Contest</button>
+        <button class="btn expbtn" data-act="expeditions">🧭 Expeditionen</button>
         <button class="btn footbtn ${has && footballOpen() ? '' : 'lockedbtn'}" data-act="football">⚽ Fußball-Modus${has && footballOpen() ? '' : ' 🔒'}</button>
         <button class="btn footbtn ${has && duelOpen() ? '' : 'lockedbtn'}" data-act="duel">🤝 Fußball-Duell${has && duelOpen() ? '' : ' 🔒'}</button>
-        <button class="btn expbtn ${has && duelOpen() ? '' : 'lockedbtn'}" data-act="expeditions">🧭 Expeditionen${has && duelOpen() ? '' : ' 🔒'}</button>
         <button class="btn" data-act="goto" data-arg="create">🐬 Mein Delfin</button>
         <button class="btn" data-act="goto" data-arg="shop">🐚 Delfin-Shop</button>
         <button class="btn" data-act="${has ? 'goto' : 'continue'}" data-arg="worlds">🗺 Welten</button>
@@ -235,7 +236,7 @@
         <div class="itemgrid">${items.map(it => {
           const own = S().owned.includes(it.id), eq = S().equipped[it.slot] === it.id;
           return `<button class="item ${own ? 'own' : ''} ${eq ? 'eq' : ''} ${it.premium ? 'premium' : ''}" data-act="buy" data-arg="${it.id}" title="${esc(it.hint || it.name)}">${it.premium ? '<span class="ptag">Premium</span>' : ''}<div class="ico" data-ico="${it.id}"></div><div class="iname">${it.name}</div>
-            <div class="price ${it.reward && !own ? 'rwd' : ''}">${eq ? '✔ angelegt' : own ? 'Anlegen' : it.reward ? '🏆 Fußball-Modus' : `<span class="shell-ico"></span>${fmt(it.price)}`}</div></button>`;
+            <div class="price ${it.reward && !own ? 'rwd' : ''}">${eq ? '✔ angelegt' : own ? 'Anlegen' : it.reward ? '🏆 ' + esc(it.short || 'Belohnung') : `<span class="shell-ico"></span>${fmt(it.price)}`}</div></button>`;
         }).join('')}</div></div>`;
       $('#sprev').appendChild(miniCanvas(300, 190, (ctx, t) => { const c = Save.cosmetics(); if (c.companion) Art.drawCompanion(ctx, c.companion, 62, 132, t, 1); Art.drawDolphin(ctx, { x: 160, y: 95 + Math.sin(t * 2) * 5, facing: 1, color: S().color, t, cos: c, scale: 1.45, speed: 0.4 }); }, true));
       ui.querySelectorAll('.ico').forEach(el => el.appendChild(miniCanvas(150, 86, (ctx, t) => Art.drawItemIcon(ctx, el.dataset.ico, 75, 46, 1, t), true)));
@@ -303,7 +304,7 @@
       ui.innerHTML = header('Expeditionen', `${esc(S().name)} · ${e.medals.filter(m => m).length} von 6 geschafft · Dash: Umschalttaste oder K · im Seegras kannst du dich verstecken`) + `<div class="expgrid">${Expedition.DEFS.map((D, i) => {
         const m = e.medals[i]; const it = Save.ITEMS.find(x => x.id === D.reward); const own = S().owned.includes(D.reward);
         return `<button class="expcard ${m ? 'done' : ''} ${D.id === 'albtraum' ? 'night' : ''}" data-act="expstart" data-arg="${D.id}"><div class="ex-ico">${D.icon}</div><div class="ex-name">${D.name}</div><div class="ex-desc">${D.short}</div>
-          <div class="ex-med">${[1, 2, 3].map(k => `<span class="${m >= k ? 'on' : ''}" title="${esc(D.medals[k - 1])}">${MED[k - 1]}</span>`).join('')}</div><div class="ex-rw"><span class="rwico" data-ico="${D.reward}"></span>${esc(it.name)} ${own ? '✔' : ''}</div></button>`; }).join('')}</div>
+          <div class="ex-med">${[1, 2, 3].map(k => `<span class="${m >= k ? 'on' : ''}" title="${esc(D.medals[k - 1])}">${MED[k - 1]}</span>`).join('')}</div><div class="ex-rw"><span class="rwico" data-ico="${D.reward}"></span>${esc(D.rewardNote && !own ? D.rewardNote : it.name)} ${own ? '✔' : ''}</div></button>`; }).join('')}</div>
         <div class="expbar"><button class="btn small" data-act="goto" data-arg="lexicon">📖 Meeres-Lexikon (${e.lexicon.length}/12)</button><span class="note">Medaillen: 🥉 geschafft · 🥈 gut · 🥇 perfekt – Fahre mit der Maus über eine Medaille für die Bedingung.</span>${all ? '<button class="btn gold small" data-act="cert" data-arg="expedition">📜 Expeditions-Urkunde</button>' : ''}</div>`;
       ui.querySelectorAll('.rwico').forEach(el => el.appendChild(itemIcon(el.dataset.ico, 70, 42)));
     },
@@ -339,7 +340,7 @@
 
   function buy(id) {
     const it = Save.ITEMS.find(i => i.id === id); const d = S();
-    if (it.reward && !d.owned.includes(id)) { toast('🏆 ' + it.name + ' gewinnst du im Fußball-Modus!'); return; }
+    if (it.reward && !d.owned.includes(id)) { toast('🏆 ' + it.name + ' – ' + it.hint); return; }
     if (d.owned.includes(id)) { d.equipped[it.slot] = d.equipped[it.slot] === id ? null : id; Save.save(); Sound.sfx('switch'); }
     else if (d.coins >= it.price) { d.coins -= it.price; d.owned.push(id); d.equipped[it.slot] = id; Save.save(); Sound.sfx('buy'); toast(it.name + ' gekauft!'); }
     else { toast(`Dir fehlen noch ${fmt(it.price - d.coins)} Muschel-Coins.`); return; }
@@ -468,10 +469,11 @@
     footIdx = null; duelOn = false; const d = S(); if (!d.exam.unlocked) { toast('Besiege zuerst alle 8 Bosse!'); return; }
     closeOverlay(); mode = 'finale'; screen = 'finale'; ui.innerHTML = ''; ui.className = 'ingame';
     Finale.start((won, score) => {
-      if (won) { d.exam.passed = true; d.exam.score = score; d.exam.date = new Date().toLocaleDateString('de-DE'); d.coins += 1000; Save.save(); }
+      let igs = false; if (won) { d.exam.passed = true; d.exam.score = score; d.exam.date = new Date().toLocaleDateString('de-DE'); d.coins += 1000; igs = grantReward('trikot-igs'); Save.save(); }
       overlay(`<div class="panel results"><h2>${won ? '🏆 Du hast gewonnen!' : 'Mbappé gewinnt …'}</h2><div class="bignum">${score}</div>
         <p>${won ? `Du hast Mbappé im großen Unterwasser-Finale geschlagen. Du bist der wahre Meister der acht Meere! <b>+1.000 Muschel-Coins</b>` : 'Knapp! Mbappé ist schnell – aber er lässt hinten Lücken. Versuch es nochmal!'}</p>
-        <div class="row">${won ? '<button class="btn big gold" data-act="cert" data-default>📜 Zur Urkunde</button>' : '<button class="btn big gold" data-act="final" data-default>⟲ Revanche!</button>'}<button class="btn" data-act="quit">🗺 Weltkarte</button></div></div>`);
+        ${igs ? rewardBox('trikot-igs') : ''}<div class="row">${won ? '<button class="btn big gold" data-act="cert" data-default>📜 Zur Urkunde</button>' : '<button class="btn big gold" data-act="final" data-default>⟲ Revanche!</button>'}<button class="btn" data-act="quit">🗺 Weltkarte</button></div></div>`);
+      if (igs) $('#rwcv').appendChild(itemIcon('trikot-igs', 150, 90));
       if (won) confetti();
     });
     overlay(`<div class="panel"><h2>⚽ Das große Finale</h2>
@@ -801,7 +803,7 @@
 
   /* ---------- Expeditionen ---------- */
   function startExpedition(id) {
-    if (!duelOpen()) { act('expeditions'); return; }
+    if (!S().created) { act('expeditions'); return; }
     closeOverlay(); Game.stop(); Finale.stop(); mode = 'expedition'; screen = 'expedition'; ui.innerHTML = ''; ui.className = 'ingame';
     Expedition.start(id); Expedition.paused = true; Expedition.X.intro = true; const D = Expedition.X.def;
     const extra = { haijagd: 'Bruno schwimmt dir hinterher! Bleib in Bewegung und schwimm durch das Tor, dessen Zahl die Frage oben beantwortet. Vor jedem Tor wird es langsamer.', riff: 'Keine Eile: Erkunde alles in Ruhe. Rissige Korallenwände kannst du mit dem Flossenschlag aufbrechen. Unten rechts siehst du die Karte. Schwimm zum Boot, um die Expedition zu beenden.', tauchgang: 'Behalte die Sauerstoffanzeige im Blick! Luftblasen aus den Schloten geben Luft. An Luftstationen löst du eine Sachaufgabe – das Spiel pausiert dabei.', vulkan: 'Schwimm schnell nach oben! Felsbrocken schiebst du mit dem Flossenschlag weg. Bei der Klappe müssen beide Schalter gleichzeitig leuchten. Lava-Schlösser öffnest du mit einer Aufgabe – dabei pausiert die Lava.', rettung: 'Schwimm zu den Knoten der Netze und benutze den Flossenschlag – jeder Knoten ist eine Aufgabe. Danach holst du Tilda ab: Sie folgt dir, wenn du in ihrer Nähe bleibst. Beschütze sie vor Krabben und Piranhas!' }[id];
@@ -826,13 +828,14 @@
     const d = S(), e = d.expeditions, i = Expedition.DEFS.findIndex(D => D.id === res.id), D = Expedition.DEFS[i];
     const before = e.medals[i]; e.medals[i] = Math.max(before, res.medal); d.coins += res.coins;
     if (res.lexicon) res.lexicon.forEach(id => { if (!e.lexicon.includes(id)) e.lexicon.push(id); });
-    const newItem = grantReward(D.reward) ? D.reward : null;
+    const earns = D.id === 'riff' ? e.lexicon.length >= 12 : true;
+    const newItem = earns && grantReward(D.reward) ? D.reward : null;
     if (e.medals.every(m => m >= 1) && !e.date) e.date = new Date().toLocaleDateString('de-DE');
     Save.save();
     const MED = ['', '🥉 Bronze', '🥈 Silber', '🥇 Gold'];
     overlay(`<div class="panel results"><h2>${D.icon} ${D.name} geschafft!</h2><div class="bigmedal">${MED[res.medal]}</div>${res.medal > before && before ? '<p><b>Neue Bestleistung!</b></p>' : ''}
       <table class="rt">${res.lines.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}<tr class="tot"><td>Muschel-Coins</td><td>+${fmt(res.coins)}</td></tr></table>
-      ${res.medal < 3 ? `<p class="note">Für ${MED[res.medal + 1]}: ${esc(D.medals[res.medal])}</p>` : ''}${newItem ? rewardBox(newItem) : ''}
+      ${res.medal < 3 ? `<p class="note">Für ${MED[res.medal + 1]}: ${esc(D.medals[res.medal])}</p>` : ''}${D.id === 'riff' && !S().owned.includes('forscherhut') ? `<p class="note">🎩 Den Forscherhut bekommst du, wenn alle 12 Meerestiere im Lexikon sind (bisher ${e.lexicon.length}).</p>` : ''}${newItem ? rewardBox(newItem) : ''}
       <div class="row"><button class="btn big gold" data-act="expquit" data-default>🧭 Zur Expeditionskarte</button><button class="btn" data-act="expstart" data-arg="${D.id}">⟲ Nochmal</button>${e.medals.every(m => m >= 1) ? '<button class="btn" data-act="cert" data-arg="expedition">📜 Urkunde</button>' : ''}</div></div>`);
     if (newItem) $('#rwcv').appendChild(itemIcon(newItem, 150, 90));
     confetti();
@@ -840,10 +843,10 @@
   function nightmareResult(st) {
     const d = S(), e = d.expeditions, w = st.world; const first = !e.nightmare[w - 1]; e.nightmare[w - 1] = true;
     const n = e.nightmare.filter(Boolean).length; const medal = n >= 8 ? 3 : n >= 5 ? 2 : n >= 2 ? 1 : 0; const i = 5; e.medals[i] = Math.max(e.medals[i], medal);
-    d.coins += 300; const newItem = medal >= 1 ? (grantReward('trikot-expedition') ? 'trikot-expedition' : null) : null;
+    d.coins += 300; const newItem = n >= 8 ? (grantReward('trikot-expedition') ? 'trikot-expedition' : null) : null;
     if (e.medals.every(m => m >= 1) && !e.date) e.date = new Date().toLocaleDateString('de-DE'); Save.save();
     const nextW = WORLDS.find(W => !e.nightmare[W.id - 1]);
-    overlay(`<div class="panel results"><h2>💀 Albtraum-${WORLDS[w - 1].short} geschafft!</h2><p>${first ? 'Unglaublich – mit nur einem Herz!' : 'Wieder geschafft!'} <b>+300 Coins</b></p><p>Albtraum-Welten: <b>${n} von 8</b> ${medal ? '· Medaille: ' + ['', '🥉', '🥈', '🥇'][medal] : '(🥉 ab 2 Welten)'}</p>${newItem ? rewardBox(newItem) : ''}
+    overlay(`<div class="panel results"><h2>💀 Albtraum-${WORLDS[w - 1].short} geschafft!</h2><p>${first ? 'Unglaublich – mit nur einem Herz!' : 'Wieder geschafft!'} <b>+300 Coins</b></p><p>Albtraum-Welten: <b>${n} von 8</b> ${medal ? '· Medaille: ' + ['', '🥉', '🥈', '🥇'][medal] : '(🥉 ab 2 Welten)'}${n < 8 ? ' · Forschertrikot nach allen 8' : ''}</p>${newItem ? rewardBox(newItem) : ''}
       <div class="row">${nextW ? `<button class="btn big gold" data-act="nightplay" data-arg="${nextW.id}" data-default>Nächster Albtraum ▶</button>` : ''}<button class="btn" data-act="quit">💀 Zur Albtraum-Auswahl</button></div></div>`);
     if (newItem) $('#rwcv').appendChild(itemIcon(newItem, 150, 90));
     confetti();
